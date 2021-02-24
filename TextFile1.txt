@@ -1,0 +1,192 @@
+﻿** projedeki hiç bir classın boş kalmaması önemli. boşta olsa bir interface implemente etmemiz gerekiyor.
+** abstract nesneleri ile classlarımı işaretliyoruz.
+
+Abstrat klasörlerine içerisinde soyut nesneler yer alıyor. nedir bu soyut nesneler 
+(interfaceler) 
+(abstract nesneler) => bu neseneler nedir bunlara bakalım.
+(base classlar) => base classlar, core classlar.
+Abstractların içerisine referans tutucuları koyuyoruz.
+
+Concrete klasörlerine ise somut nesneleri kullanıyoruz. gerçek işi yapan classları buraya koyuyoruz.
+
+**Entities** kısmı veri tabanındaki tablolar.:
+Concrete Klasöründe: veri tabanlarına ilişkin alanlar yer alıyor. dtolar ve joinli yapılarda burada yer alıyor.
+propertyleri tutarlar. içerisindeki classlar public olmalıdır. classın public olması, classa diğer katmanların erişebilmesini 
+sağlar.
+Abstract Klasörü: buraya IEntity diye bir interface oluşturduk. içi boş. IEntity implemente eden class bir veri tabanı tablosudur.
+
+
+
+DataAccess kısmında ise entities de yer alan tabloların erişimleri vardır. burada erişim metodları arasında 
+entitiy framework, inmemory gibi durumlar söz konusu. 
+Abstract Klasöründe: nesnelerin başına hangi veri erişim metodu sonunada "Dal" ifadesi kullanılan interfaceler oluşturulur.
+IProductDal => product ın dataaccess layer ına ilişkin interface.
+IProductDal içerisinde CRUD metodlarının imzalarını tanımladık. (Product için ileride bunu ortak yapabiliriz.)
+ICategoryDal => category classının dataaccess layerına ilişkin interface.
+ICategoryDal içerisinde CRUD metodlarının imzalarını tanımladık. (Category için ileride bunu ortak yapabiliriz.)
+ICategoryDal ve IProductDal içerisinde yer alan metodlar neredeyse aynı bunun için bir generic oluştursak.
+ve by generiğe Category verince ICategoryDal, Product verince IPorductDal gibi çalışsa.
+bu yapıya Generic Reporsitory Design Patern => bunu araştıralım.
+Generic olarak IEntityRepository'i oluşturduk. (interface)
+IEntityRepository içerisine IProductDal da yer alan imza metodları aldık.
+IEntityRepository deki metodlar bütün veri tabanı nesnelerinde kullanılacağından GetAllByCategory kısmını 
+revize etmemiz lazım. bunun için yapacağımız şey:
+GetAll() metodu ile hepsini alabiliyoruz. içerisine (Expression<Func<T,bool>> filter=null) dediğimizde:
+GetAll(Expression<Func<T,bool>> filter=null) bu ifade ile filtre vermediğimizde bütün data gelirken
+filtre olarak bir değer verirsek bu durumda filtrelenmiş data gelecek.
+Bu sayede GetAllByCategory() metodlara ihtiyacımız kalmayacak.
+Ayrıca bu alanda bir liste değilde sadece tek bir eleman getirmek istiyoruz. bunun için:
+T Get(); diye bir metod tanımlıyoruz. bu metodun başında List<T> olmaması gelecek olan verinin 
+tek olduğu liste olmadığını gösterir.
+Bu metodda ise GetAll() da verdiğimiz Expressionı veriyoruz ancak. filtre=null kısmı olmayacak.
+Bunun nedeni ise burası tek bir değer döneceğinden dolayı filtreleme zorunlu olmalı.
+Şimdi IEntityReposity içerisinde metodlarımızın imzalarını tanımladık. Next?
+ICategoryDal ve IProdcutDal içerisindeki imza metodları siliyoruz onlara gerek kalmadı.
+Daha sonra ICategoryDal : IEntityRepository<Category> , IProductDal : IEntityRepository<Product> diyerek inherite ediyoruz.
+??? peki bu <Category> yada <Product> kısımlarını newlerken veremezmiyiz???
+??? bu sayede proje içerisinde iki .cs dosyasından kurtulmuş olmazmıyım???
+Bunları yaptıktan sonra InMemoryProductDal için IProductDal ı yeniden implemete ediyoruz. bunun nedeni hata vermesini 
+engellemek. Bundan sonra EntityFramework'ten çalışacağımız için burası önemli değil.
+
+DataAccess Concrete EntityFramework:
+Şimdi InMemoryKullanmayacağımızdan dolayı, EntityFramework klasörü içerisinde Abstract ta tanımladığımız interfacelerin
+somut classlarını oluşturuyoruz.
+EfCustomerDal => ICustomerDal dan inherite oluyor.
+EfProductDal => IProductDal dan inherite oluyor.
+EfCategoryDal => ICategoryDal dan inherite oluyor.
+??? Bu üç IProductDal, ICustomerDal, ICategoryDal değilde IEntityRepository'den inheritance alamazmıyız ???
+??? sanki yapabiliriz gibime geliyor ???
+IEntiryRepository<T> generic oluşturmuştuk. burada T'nin alabilceği değerleri sınırlandırabiliriz.
+Buna Generic Constraint deniliyor. Generic Kısıt demek.
+Bu kısıtlamaları yapma amacım ise Entities içerisindeki Concrete klasöründe yer alan sınıfların yazılabilmesini
+sağlamak. bu sınıflar dışında bir şey yazılırsa hata vermesini sağlamak.
+IEntityRepository<T> where : class, IEntity, new()
+where: kısmına T'nin alabileceği kısıtları koyuyoruz.
+class: referans tutabilen şeyler yazılabilir T için (int, void, string vb. yazılmasını engelliyor.)
+IEntity: IEntity interface'i yada bu interfacein implemente ettiği classların yazılması kısıtı.
+(class diyince entities.concrete içerisindeki classların dışında classlarında yazılmasındas bir sıkıntı yoktu.)
+(ama IEntity'i kısıt olarak verince bunu aşmış olduk.)
+*** Fakat burada yine bir sıkıntımız var T için IEntity'nin kendiside verilebiliyor. bunu engellemek için ise
+*** interfacelerin new() lemememesini kullanılıyorz.
+new(): IEntity'nin T için değer olarak verilememesini engellemek için yaptığımız bir şey. interfaceler new() lenemez.
+dolayısıyla IEntity'de new() lenemez.
+
+Microsoft.EntityFramework.Core.Sql => burada console UI hangi dotnet sürümündeyse o sürüme göre yüklenmesi gerekiyor.
+NuGet paketlerinden yükleniyor. DataAccess için yüklenicek. Çünkü EntityFramework için bağlantımızı burada yapacağız.
+Şimdi veri tabanı ile entities.concrete içerisindeki classlar ile ilişkilendirmemiz lazım.
+Bunun için DataAccess Abstract içerisine Context clasını kuruyoruz.
+DataAccess.EntityFramework:
+içerisinde NorthwindContext isimli class ı oluşturduk. DB tabloları ile proje tablolarını bağlayacağız.
+override OnConfiguring => tab
+içerisine => optionsBuilder.UseSqlServer(@"connection string")
+*** bu yukarıdaki ikisi ile veritabanına bağlanmamızı sağlıyor.
+*** daha sonra bunun altına hangi veri tabanı tablosu hangi proje classı ile ilişkili olacak onu belirtiyoruz.
+*** Buna mappind deniyor sanırım. bunun custom mapping olayıda var.
+*** bu ilişkileri prop ile veriyoruz.
+public DbSet<projeclassı> Db_deki_balo {get,set} (prop ile yaptık. key DbSet içerisine proje içindeki class geliyor.)
+Bağlatımızı yaptığımıza göre EfProductDal, EfCategoryDal, EfCustomerDal içindeki kodlarımızı düzenleyebiliriz.
+CRUD operasyonlarımızı yazacağız. Daha sonra bu CRUD operasyonlarımızı injection ve ctor ile manager classlarımıza
+aktarcağız.
+***************************
+EfProductDal, EfCategoryDal, EfCustomerDal, bunlar içerisindeki metodlarda northwindContex'imizi newlememiz lazım.
+Ancak bu contex'in kullanımı ve new() lenerek heapte kalması bellek için maliyetli. kullanıp bellekten silmemiz lazım.
+Bunun için IDisposible pattern diye bir şey kullanıyoruz.
+using (NorthwindContext context = new NorthwindContext())
+{
+	CRUD metoduna ait kod => contex ile ekleme işlemleri farklı. bunların tutoriallarına bak!!!
+}
+Using içerisinde nortwindcontext'i newlememiz using içerisinde kod çalışıp işi bitince newlenen nortwindcontext i bellekten
+siliyor. (garbage collector vasıtası ile.)
+
+***********
+northwind contex ile Crud metodlarında kod tekratı yapıyoruz bunu bir baseclassa alarak bundan kurtulabiliriz.
+Bunu ilerleyen derslerde yapacağız.
+*********
+bu yukarıdaki crudları yazdıktan sonra Business classlarımıza bir bakmamız gerekiyor. hata varmı?
+güncelleme gerekiyor mı gibisinden.
+
+
+
+
+DataAccess'te CRUD operasyonlarını tanımlıyoruz.
+** interface'in içerdiği metodlar default publictir. ancak interfacein kendisi değildir.
+Concrete Klasörü: burada soyut nesnesi olacak. burada veri erişim yöntemleri yer alacak. inmemory, ado.net, depper,
+entityframework. eğerki alternatif teknolojiler olan yerlerde kod yazıyorsak. klasörleme yapmamız gerekir. hangi teknoloji
+içinse o kodlar o teknolojinin adı olan klasör oluşturulur.
+Concrete içerisinde abstracta tanımladığımız interfacein iş yapan classlarını oluşturuyoruz. 
+IProductDal => InMemoryProductDal gibi. hangi interface hangi class ile ilişkiliyse implemente işlemini yapıyoruz.
+InMemoryProductDal da delete ve update metodları için neden silinemez sorusunun cevabı:
+benim arayüzden gönderdiğim productın bilgilerinin aynısının olması önemli değil. burada heapte hangi adresi sileceğimizi
+bildirmemiz gerekiyor. bunun içerisinde arayıp ürünü bulup o referans numarasının remove edilmesini belirtmemiz gerekmekte.
+InMemoryProductDal:
+burada interface içerisinde imza olarak belirtiğimiz metodların neler yapacaklarını kodladık.
+Ayrıca burada inmemory olarak çalışacağımızda dolayı inmemory içerisine verilerimizin olduğu listeyi hazırlayıp belleğe göndermemiz
+gerekmekte.
+List<Car> _cars => global değişken => list of Car
+bunun constructorını kurmamız lazım şu şekilde:
+public InmemoryCarDal()
+_cars = new List<Car> => _cars isimli global değişken list of Car
+{
+	new Car {} => arabalarımıza ait özelliklerimizi tanımladığımız listemizi oluşturuyoruz.
+}
+
+
+
+Business:
+Abstract Klasörü: burada iş katmanında kullanacağımız servis operasyonlarını yazıyoruz.
+burada sanki DataAccess'te ki işlerin aynısını yapıyor gibiyiz. bunun nedenini anlayalım.
+Bunun nedeni iş kurallarının olmaması olabilir mi?
+hayır aynı değil...
+** DataAccess içerisinde Abstracta IProductDal ile tanımladığımız imza metodlarımızı yine DataAccess içerisinde 
+** Concrete içerisinde InMemoryProductDal ile metodların ne iş yapacağını belirttik.
+** Daha sonra Bussines içerisinde abstracta IProductService ile imza metodlarımızı tanıttık. yine Business içerisinde
+** Concrete te ProductManager içerisinde IProdcutServici i implemente ettik.
+** bu implemantasyonu yaparken IProductDal'ı class dışındas injection yaptık be bunun constructorını oluşturduk.
+** bu sayede InMemoryProdcutDal'a impelemete edilen IProductDal'ı ve bu sayede InMemoryProductDal da tanımladığımız
+** metodları IProductService içerisinde imza olarak belirtiğimiz metodların içerisine alabildik.
+** Yani InMemoryProductDal da yazdığımız kodları yeniden yazmadık. Asla Kendini Tekrarlama ilkesine uyduk.
+
+***********************************************************
+9 uncu ders....
+EfProductDal, EfCategoryDal, vb yerlerde kodların %90 ı aynı sadece List<> ile dönen tip ve verilen tipler değişiyor.
+Bunun için bu alanlarda yer alan kodları idisposible paternleri ve verilen değerleri generic tip e çevirsem?
+ve bu tipleri base bir class a çevirsem?
+Bu nedenle yazılım geliştirme projelerinde framework katmanı oluştururuz.
+buna core proje yapsak bu sayede başka projelerimizde de bu core katmanını oluştursak.
+Core adında classlib oluşturduk.
+Core katmanında hangi alt yapı ile ilgileceksen o lanları klasörlerini oluşturuyoruz.
+DataAccess isminde bir klasör açtık. Veri erişimlerde kullanmak üzere. DataAccess e hizmet edecek Core kodları.
+Core katmanındaki DataAccess içerisine => DataAccess içerisindeki IEntityRepository i taşıyorum.
+Core katmanını proje içerinde bir yer ile refere etmiyoruz. bagımsız olmasını istiyoruz.
+Bunu yapınca IEntity hata vericek. ancak IEntity bu proje özgü değil bu nedenle core a taşıyabiliriz.
+Core katmanı diğer katmanları referans almaz.....
+Başka katmanlar Core a bağımlı olabilir ancak Core başka bir katmana bağımlı olamaz.
+Diğer katmanları COre a olan referanslarını hallet. (doslayarı taşıdığımız için.)
+Code refactoring.
+
+*** Core DataAccess EntityFramework klasörü oluşturduk.
+Bu klasörün içerisine EfEntityFrameworkBase classını oluşturduk.
+Bu yapının faydası veri tabanımıza yeni bir tablo eklediğimizde onun CRUD codlarını yazmayacağız.
+Burada CRUD kodlarını bir kere yazıcaz ve her yerde onu kullanıcaz.
+**** CORE içinde entityframework ü eklememiz lazım. NuGet'ten.
+IEntityRepositoryBase e CRUD ları veriyoruz ancak <TEntity,TContext> olarak. 
+IEntityRepository'i neden değiştirmedik hiç bu kısmı anlamadım.
+
+***DTO = ilişkisel tablolarıdaki verileri gösterme...
+DTO = Data Transformation Object  Entities İçerisinde bir klasör altında tanımlıyoruz.
+ProductDetailDto : çıplak class kalmasın dedik ancak buraya IEntity yi inherite edemeyiz. IEntity veri tabanı nesnelerine
+(tablolarına) verilerbilir. ancak dto'lar veri tabanı tabloları değil, veri tabanı tablolarının join i olabilir.
+Bu yüzden IDto diye implemente etmemiz lazım.
+IDto core da entities altında create ediliyor. DTO'lar implemente ediyor.
+ProductDetailDto:
+içerisine hangi alanları almak istiyorsak (farklı tablolardan) prop olarak veriyoruz.
+BU dto'nun join kodunu ise IProductDal içersine imzasını yazıyoruz. sadece product ı ilgilendirdiği için
+daha sonra IProductDal'ın inherite olduğu classlara implemente et (InMemoryProductDal, EfProductDal),
+EfProductDal'ın içerisine DTO joini yazılır.
+daha sonra bu metodun imzasını IProductService içine taşıyorumki. ProductManager içerisinde çağırabileyim.
+
+****CORE UTİLİTİES****
+CRUD operasyonlarının dönüşlerinin ve geri dönecek mesajlarının olduğu yer.
+Utilities içerisine Results klasörü açtık içerindeki interfacelerde proplar yer alacak.
+bu proplar sadece get; ile yazılıyor. Bu Result içerisinde abstract ve concrete klasörlerini yapabiliriz.
+daha sonra bu interfacein somut sınıfını yapıyoruz.
