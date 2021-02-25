@@ -9,8 +9,26 @@ namespace ConsoleUI
         static void Main(string[] args)
         {
             //CarDetails();
-            BrandList();
+            //BrandList();
             //ColorList();
+            UserList();
+        }
+
+        private static void UserList()
+        {
+            UserManager userManager = new UserManager(new EfUserDal());
+            var userresult = userManager.GetAll();
+            if (userresult.Success == true)
+            {
+                foreach (var user in userresult.Data)
+                {
+                    Console.WriteLine(user.FirstName);
+                }
+            }
+            else
+            {
+                Console.WriteLine(userresult.Message);
+            }
         }
 
         private static void ColorList()
