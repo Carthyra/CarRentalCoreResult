@@ -16,14 +16,13 @@ namespace DataAccess.Concrete.EntityFramework
         {
             using (CarRentanContex contex = new CarRentanContex())
             {
-                var joinresult = from c in contex.Cars
-                    join b in contex.Brands on c.BrandId equals b.BrandId
-                    join co in contex.Colors on c.ColorId equals co.ColorId
+                var joinresult = from c in contex.Car
+                    join b in contex.Brand on c.BrandId equals b.BrandId
+                    join co in contex.Color on c.ColorId equals co.ColorId
                     select new CarDetailDto()
                     {
-                        CarName = c.CarName,
-                        BrandName = b.BrandName,
-                        ColorName = co.ColorName,
+                        BrandName = b.Name,
+                        ColorName = co.Name,
                     };
                 return joinresult.ToList();
             }

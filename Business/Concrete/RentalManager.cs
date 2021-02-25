@@ -30,7 +30,7 @@ namespace Business.Concrete
             }
         }
 
-        public IDataResult<Rental> Get(int rentalId)
+        public IDataResult<Rental> Get(int rentId)
         {
             if (DateTime.Now.Hour == 23)
             {
@@ -38,7 +38,7 @@ namespace Business.Concrete
             }
             else
             {
-                return new SuccessDataResult<Rental>(_rentalDal.Get(r => r.RentId == rentalId), Messages.RentalListed);
+                return new SuccessDataResult<Rental>(_rentalDal.Get(r => r.Id == rentId), Messages.RentalListed);
             }
         }
 
@@ -50,7 +50,7 @@ namespace Business.Concrete
             }
             else
             {
-                return new SuccessDataResult<List<Rental>>(_rentalDal.GetAll(r=>r.UserId==userId), Messages.UserRentalsListed);
+                return new SuccessDataResult<List<Rental>>(_rentalDal.GetAll(r=>r.CustomerId==userId), Messages.UserRentalsListed);
             }
         }
 
@@ -80,14 +80,9 @@ namespace Business.Concrete
 
         public IResult Add(Rental rental)
         {
-            var carToAdd = _rentalDal.Get(r=>r.CarId == rental.CarId);
             if (DateTime.Now.Hour==23)
             {
                 return new ErrorResult(Messages.Maintaince);
-            }
-            else if (carToAdd.ReturnDate != null || carToAdd.ReturnDate>DateTime.Now)
-            {
-                return new ErrorResult(Messages.CarOnRent);
             }
             else
             {

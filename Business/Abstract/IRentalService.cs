@@ -10,7 +10,7 @@ namespace Business.Abstract
     public interface IRentalService
     {
         IDataResult<List<Rental>> GetAll();
-        IDataResult<Rental> Get(int rentalId);
+        IDataResult<Rental> Get(int rentId);
         IDataResult<List<Rental>> GetByCustomer(int userId);
         IDataResult<List<Rental>> GetByDateRange(DateTime start, DateTime end);
         IDataResult<List<Rental>> GetByCar(int carId);

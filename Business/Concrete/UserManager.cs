@@ -20,7 +20,7 @@ namespace Business.Concrete
 
         public IDataResult<List<User>> GetAll()
         {
-            if (DateTime.Now.Hour == 23)
+            if (DateTime.Now.Hour == 22)
             {
                 return new ErrorDataResult<List<User>>(Messages.Maintaince);
             }
@@ -38,7 +38,7 @@ namespace Business.Concrete
             }
             else
             {
-                return new SuccessDataResult<User>(_userDal.Get(u => u.UserId == userId), Messages.UserListed);
+                return new SuccessDataResult<User>(_userDal.Get(u => u.Id == userId), Messages.UserListed);
             }
         }
 

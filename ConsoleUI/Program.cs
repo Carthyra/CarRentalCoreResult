@@ -11,7 +11,7 @@ namespace ConsoleUI
             //CarDetails();
             //BrandList();
             //ColorList();
-            UserList();
+            //UserList();
         }
 
         private static void UserList()
@@ -39,7 +39,7 @@ namespace ConsoleUI
             {
                 foreach (var color in result.Data)
                 {
-                    Console.WriteLine(color.ColorName);
+                    Console.WriteLine(color.Name);
                 }
             }
             else
@@ -56,7 +56,7 @@ namespace ConsoleUI
             {
                 foreach (var brand in result.Data)
                 {
-                    Console.WriteLine(brand.BrandName);
+                    Console.WriteLine(brand.Name);
                 }
             }
             else
