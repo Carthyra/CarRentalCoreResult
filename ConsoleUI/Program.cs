@@ -1,5 +1,6 @@
 ﻿using System;
 using Business.Concrete;
+using Business.Constants;
 using DataAccess.Concrete.EntityFramework;
 using Entities.Concrete;
 
@@ -14,7 +15,7 @@ namespace ConsoleUI
             //ColorList();
             //UserList();
             RentalManager rentalManager = new RentalManager(new EfRentalDal());
-            rentalManager.Add(new Rental {CarId = 1,CustomerId = 1,Id = 1,RentDate = DateTime.Now});
+            Console.WriteLine(rentalManager.Add(new Rental { CarId = 1, CustomerId = 1, RentDate = DateTime.Today }).Message);
         }
 
         private static void UserList()

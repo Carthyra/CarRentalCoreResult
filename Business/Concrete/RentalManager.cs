@@ -80,9 +80,14 @@ namespace Business.Concrete
 
         public IResult Add(Rental rental)
         {
+            var carToAdd = _rentalDal.GetAll(r => r.CarId == rental.CarId && r.ReturnDate.Year == 0001);
             if (DateTime.Now.Hour==23)
             {
                 return new ErrorResult(Messages.Maintaince);
+            }
+            else if (carToAdd.Count>0)
+            {
+                return new ErrorResult(Messages.CarOnRent);
             }
             else
             {
