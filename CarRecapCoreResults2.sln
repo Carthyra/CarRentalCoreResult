@@ -10,13 +10,15 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Entities", "Entities\Entities.csproj", "{885D70F2-3E18-492E-A01A-C9D571B579C3}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DataAccess", "DataAccess\DataAccess.csproj", "{AE419253-B2A0-43EC-AB42-8F187ED13BD2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "DataAccess", "DataAccess\DataAccess.csproj", "{AE419253-B2A0-43EC-AB42-8F187ED13BD2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Core", "Core\Core.csproj", "{0906029A-F289-42EB-B5B4-EAF899A0D17D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Core", "Core\Core.csproj", "{0906029A-F289-42EB-B5B4-EAF899A0D17D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Business", "Business\Business.csproj", "{1F47C86D-2EC5-4C59-960B-E55888387AF8}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Business", "Business\Business.csproj", "{1F47C86D-2EC5-4C59-960B-E55888387AF8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ConsoleUI", "ConsoleUI\ConsoleUI.csproj", "{CB513575-0119-49CB-A44E-44D0E05D33F1}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ConsoleUI", "ConsoleUI\ConsoleUI.csproj", "{CB513575-0119-49CB-A44E-44D0E05D33F1}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "WebAPI", "WebAPI\WebAPI.csproj", "{155F2E05-F85A-4B14-8F74-07C39825DFE4}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -44,6 +46,10 @@ Global
 		{CB513575-0119-49CB-A44E-44D0E05D33F1}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{CB513575-0119-49CB-A44E-44D0E05D33F1}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{CB513575-0119-49CB-A44E-44D0E05D33F1}.Release|Any CPU.Build.0 = Release|Any CPU
+		{155F2E05-F85A-4B14-8F74-07C39825DFE4}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{155F2E05-F85A-4B14-8F74-07C39825DFE4}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{155F2E05-F85A-4B14-8F74-07C39825DFE4}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{155F2E05-F85A-4B14-8F74-07C39825DFE4}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

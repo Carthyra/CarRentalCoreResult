@@ -11,7 +11,7 @@ namespace Business.Abstract
     {
         IDataResult<List<Rental>> GetAll();
         IDataResult<Rental> Get(int rentId);
-        IDataResult<List<Rental>> GetByCustomer(int userId);
+        IDataResult<List<Rental>> GetByCustomer(int customerId);
         IDataResult<List<Rental>> GetByDateRange(DateTime start, DateTime end);
         IDataResult<List<Rental>> GetByCar(int carId);
         IResult Add(Rental rental);

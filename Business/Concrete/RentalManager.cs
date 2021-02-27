@@ -42,7 +42,7 @@ namespace Business.Concrete
             }
         }
 
-        public IDataResult<List<Rental>> GetByCustomer(int userId)
+        public IDataResult<List<Rental>> GetByCustomer(int customerId)
         {
             if (DateTime.Now.Hour == 23)
             {
@@ -50,7 +50,7 @@ namespace Business.Concrete
             }
             else
             {
-                return new SuccessDataResult<List<Rental>>(_rentalDal.GetAll(r=>r.CustomerId==userId), Messages.UserRentalsListed);
+                return new SuccessDataResult<List<Rental>>(_rentalDal.GetAll(r=>r.CustomerId==customerId), Messages.UserRentalsListed);
             }
         }
 
