@@ -53,7 +53,7 @@ DataAccess Concrete EntityFramework:
 somut classlarını oluşturuyoruz.
 EfCustomerDal => ICustomerDal dan inherite oluyor.
 EfProductDal => IProductDal dan inherite oluyor.
-EfCategoryDal => ICategoryDal dan inherite oluyor.
+EfCategoryDal => IProductDal dan inherite oluyor.
 ??? Bu üç IProductDal, ICustomerDal, ICategoryDal değilde IEntityRepository'den inheritance alamazmıyız ???
 ??? sanki yapabiliriz gibime geliyor ???
 IEntiryRepository<T> generic oluşturmuştuk. burada T'nin alabilceği değerleri sınırlandırabiliriz.
@@ -190,3 +190,306 @@ CRUD operasyonlarının dönüşlerinin ve geri dönecek mesajlarının olduğu 
 Utilities içerisine Results klasörü açtık içerindeki interfacelerde proplar yer alacak.
 bu proplar sadece get; ile yazılıyor. Bu Result içerisinde abstract ve concrete klasörlerini yapabiliriz.
 daha sonra bu interfacein somut sınıfını yapıyoruz.
+
+*** AOP Giriş ***
+Bussines içerisinde DependencyResolvers klasörü içerisinde Autofac klasörü (nuget paketi yükleniyor. 2 tane aop olanı)
+Autofac ve Autofac.Extras.DynamiProxy paketlerini yüklüyoruz.
+bunun içinde de AutofacBusinessModule classını yaptık.
+Module ' ü inherite ettik classa (Autofac içerisinde olan Module'ü )
+daha sonra override load ile builder yaptık.
+builder içerisine:
+builder.RegisterType<ProductManager>().As<IProductService>().SingleInstance();
+** IProductService isteyen olursa ona ProductManager register et.
+builder.RegisterType<EfProductDal>().As<IProductDal>().SingleInstance();
+** IProductDal isteyen olursa EfProductDal register et.
+bunları yerleştirdil. EfProductDal a ProductManager'ı newlerken ihtiyaç duyuyuroz.
+SingleInstace ifadesi bir kere instanceını oluşturuyor ihtiyaç duyan yerlere onu veriyor.
+Data tutmadığını bildiğimiz için singleinstace().
+Bu yukarıdaki işlemleri daha önceden webapi içerisinde startup içerisinde yapmıştık.
+Bunu backend de daha da geriye taşıyoruz. bunun nedeni ileride farklı bir api eklemek istersek
+Bu yapıları oradan çekebilmek.
+dolayısıyla webapi startup içerisinde ki aşağıdaki kodlara gerek kalmadı.
+services.AddSingleton<IProductService,ProductManager>();
+services.AddSingleton<IProductDal,EfProductDal>();
+
+
+daha sonra bu Autofac i webapi içerisine aktarabilmemiz gerekiyor. bunun için ise
+webapi içerisinde Program.cs içersinde 
+.UseServiceProviderFactory(new AutofacServiceProviderFactory()) ==> burada autofac kullanacağımızı belirtiyoruz.
+***AutofacServiceProviderFactory yazınca çözümleyebilmek için bir tane nuget paketi yüklememizi isteyecek.
+*** yüklememiz gereken nuget paketi Autofac.Extension.DependencyInjection bu paketi yüklüyoruz.
+.ConfigureContainer<ContainerBuilder>(builder => |==> burada ise autofac için hangi modülü (yazdığımız) bunu veriyoruz.
+bunları ekliyoruz ve devamında builder için :
+builder.RegisterModule(new AutofacBusinessModule()); ile autofac i veriyoruz.
+
+daha sonra validasyon kurallarımız için:
+Bussiness kodu ile doğrulama kodu ayrıdır. iş kuralları ile validasyon kodlarını ayrı yazmamız lazım.
+Validasyon: nesnenin iş kurallarına dahil etmek için yapısal olarak doğru olup olmadığını kontrol ediyor.
+örneğin: minimun iki karakter, şirede şu karakterler olmalı vb. yapısal uyum ile alakalı.
+sayı aralığı ne olabilir vb.
+iş kuralı: iş gereksinimlerine uygunluk.
+örneğin: ehliyet alacağız. sınavları geçmiş mi vs. bankada kredi verirkek uygun mu vs.
+*** ancak kredinin adının hangi karakter sayıları aralığında olacağı vs ise validasyon.
+Business içerisinde ValidationRules klasörü bunun içerisine FluentValidation klasörü (nuget paketini yüklüyoruz.)
+validasyon işlemleri için nugette fluentcalidasyon paketini kullanacağız.
+*** bu validasyonların kötü kodu data annotations ile entity classı içerisinde tanımlıyorlar.
+ancak burada hata ileride proporty'nin durumu değişirse sıçtık.
+ValidationRules içerisinde ProductValidator diye bir class oluşturduk. 
+ProductValidator classına AbstractValidator'ı inherite ediyoruz.
+AbstractValidator fluentvalidation paketinden geliyor. içersine generic olarak hangi entity için se onu yazıyor.
+ProductValidator : AbstractValidator<Product>
+daha sonra içerisinde constructor oluşturup validasyon kurallarımızı buraya yazacağız.
+validasyon kurallarımız:
+RuleFor(p=>p.ProductName).NotEmpty(); => productname boş olamaz.
+RuleFor(p => p.ProductName).MinimumLength(2); ==> productname'in length'i iki karakter olmalıdır.
+bu kurallara koşullarda eklenebilir.
+örneğin:
+RuleFor(p=>p.UnitPrice).NotEmpty(); => unit price boş olamaz.
+RuleFor(p=>p.UnitPrice).GreaterThan(0); => unit price 0 dan büyük olmalı.
+RuleFor(p=>p.UnitPrice).GreaterThan(10).when(p=>p.CategoryId == 1); => ürünün kategory id si 1 ise o zaman fiyatı 10 dan büyük olmalı.
+*** fluentvalidation içerisinde ki kuralların dışında bir şey tanımlamak istersek.
+RuleFor(p=>p.ProductName).Must(kuralmetodununadı);
+daha sonra kuralmetoduadında bir method create ediyoruz. bool type dönen.
+kuralımızı bu metodun içerisine yazıyoruz.
+*** yukarıdaki validasyon kuralları ihlal edildiğin dönecek mesajı istersek .WithMessage("hata mesajı");
+diye ekleyebiliriz.
+
+Bu kuralları kullanmak için Manager Classlar içerisinde hangi metodda kullanacaksak onun içerisinde
+
+var context = new ValidationContext<Product>(product); ==> Validation contex oluşturuyoruz generic.
+ProductValidator productValidator = new ProductValidator(); ==> productValidator ı oluşturduk.
+var result = productValidator.Validate(context); ==> productValidator'ın contex için döndüğü değeri result değişkenine atadık.
+if(!result.IsValid) ==> result valid değilse
+{
+	throw new ValidationException(result.Errors) ==> validation exception hata fırlat demek.
+}
+
+bu kodu yazdığımız zaman validatorımız ilgili metod için çalışacak.
+***Ancak yukarıdaki kodu her metoda yazmak yerine bir tool haline getirebiliriz. yukarıdaki kodda değişen alanlar
+Product class, product entity bunlar değişiyor bir tek.
+Validasyon kurallarını bütün katmanlar için kullanmamız söz konusu olduğu ilgili kodu Core katmanına taşımamız lazım.
+Bunun için:
+Core katmanında CrossCuttingConcerns diye bir klasör ekliyoruz.
+CrossCuttingConcerns konusunu araştır. Uygulama katmanlarını dikine kesen alanlar.
+CrossCuttingConcerns içerisinde Validation klasörü oluşturuyoruz.
+
+var context = new ValidationContext<Product>(product); ==> Validation contex oluşturuyoruz generic.
+ProductValidator productValidator = new ProductValidator(); ==> productValidator ı oluşturduk.
+var result = productValidator.Validate(context); ==> productValidator'ın contex için döndüğü değeri result değişkenine atadık.
+if(!result.IsValid) ==> result valid değilse
+{
+	throw new ValidationException(result.Errors) ==> validation exception hata fırlat demek.
+}
+şimdi bu kodu burada öyle bir yazıcazki kullanmak istediğimizde.
+ValidationTool.Validate(new ProductValidator(),product);
+==> yani içerisinde validator vereyim, birde entity vereyim.
+bunun için:
+CrossCuttingConcers/Validaton içerisinde ValidationTool isminde bir class oluşturuyoruz.
+Bu tür classlar static olarak tanımlanır. sebebi bir kere instance oluşturulur uygulama belleği o instanceı kullanır.
+daha sonra bu class içerisinde Validate işlemini yapacak bir method tanımlıyoruz.
+*** static bir classın metodlarında static olmalıdır C# da. (javada böyle bir zorunluluk yok.)
+Validate metodunun alacağı değişkenler arasında IValidator var. bu AbstractValidator sınıfına inherite olan interfacelerden geliyor.
+F12 ile arayıp bulduk.
+public static Validate(IValidator validator, object entity) ==> object entity dememizin nedeni dto, entity ler aslında object.
+{
+	var context = new ValidationContext<object>(entity); ==> Validation contex oluşturuyoruz generic.
+	//ProductValidator productValidator = new ProductValidator(); ==> productValidator ı oluşturduk.
+	buna ihtiyacımı kalmadı.
+	var result = validator.Validate(context); ==> productValidator'ın contex için döndüğü değeri result değişkenine atadık.
+	if(!result.IsValid) ==> result valid değilse
+	{
+		throw new ValidationException(result.Errors) ==> validation exception hata fırlat demek.
+	}
+}
+bu yukarıdaki hali ile değişen kısımları halletik.
+Şimdi ManagerClasslarımızda hangi metodda kullanacaksak onun önüne.
+ValidatonTool.Validate(new ProductValidator, product);
+yazarak validator ı mızı çalıştırabiliriz.
+
+
+şeklinde kurallarımızı tanımlıyoruz.
+bu kurallarımızı çağırabilmek için...
+
+Core'da CrossCuttingConcerns klasörü içerisinde Validation klasörü eğer istersek FluentValidation klasörü de ekleyebilriz.
+bunun içserisinde ValidationTools isminde bir class oluşturduk.
+Bu classın static olması ve içerisine tanımladığımız metodlarında static olması önemli.
+public static void Validate(IValidator validator, object entity) metodunun içerisinde
+var context = new ValidationContext<object>(entity);
+var result = validator.Validate(context);
+if (!result.IsValid) => result valid değilse demek.
+{
+	throw new ValidationException(result.Errors);
+}
+
+daha sonra bu validator ı ilgili bussines manager da kullanıyoruz.
+ValidationTool.Validate<new CarValidator>(car);
+CarValidator Business.ValidationRules klasörü içerisinde yer alan Car için validasyon kurallarının girildiği yer.
+
+***AoP Nedir?***
+Aspect Oriented Programing:
+Örneğin metodlarımızı loglamak istiyoruz. bir metod ya başında ya sonunda yada hata verdiğinde loglanır.
+Uygulamanın metodunun başında, sonunda, hata verdiğinde çalışmasını istediğim kodlar varsa.
+Bu kodları AoP yönetmiyle güzel güzel dizayn edebilirsin.
+AoP sayesinde try cath yada manager classlar içerisinde sürekli metod (log) çağırmak zorunda kalmayız.
+Bu yönteme Interceptor deniliyor. Kelime anlamı araya girmek. (Metodun başı, metodun sonu, metod hata verdiğinde gibi.)
+Bu Interceptors ı oluşturmak için
+Core=>Utilities=>Interceptors klasörünü oluşturuyoruz.
+Bu Interceptors Klasörü içerisinde:
+MethodInterceptionBaseAttribute diye bir class oluştuyoruz.
+Attributeları kullanmamızın nedeni loglama,validasyon gibi şeyleri metodların üzerine Attribute olarak koyacağımız için.
+[Validate] => gibi validate attribute nu kullan demek.
+
+
+[AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
+public abstract class MethodInterceptionBaseAttribute : Attribute, IInterceptor
+{
+	public int Priority { get; set; }  //=> hangi attribute önce çalışsın.
+
+	public virtual void Intercept(IInvocation invocation)
+		{
+
+		}
+}
+AttributeTargets.Class | AttributeTargets.Method => classlara yada methodlara ekleyebilirsin.
+AllowMultiple = true => birden fazla kez kullanabilirsin (mesela loglama yapacaksın hem veri tabanına loglasın hemde bir dosyaya)
+Inherited = true => inherit edilen bir noktada da bu attribute çalışabilsin.
+** bu noktada Core katmanına da Autofac paketinin yüklenmesi gerekiyor.
+** ayrıca autofac dynamic proxy paketininde Core katmanına yüklenmesi gerekiyor.
+** son olarak aoutofac dependency injection paketini de yüklüyoruz.
+*** kısaca tüm autofac paketlerini yüklüyoruz.
+Bu paketleri zaten business içerisine yüklemiştik. Oradan alıp Core a yüklemek için solution üzerinden manage nuget packages demek yeterli.
+** AoP altyapısını sağlayacak altyapı autofac paketlerinden geliyor.
+Paketler yüklendikten sonra:
+IInterceptor => using dynamic proxy ile çözüyoruz.
+IInvocation => da using dynamic proxy ile.
+Bu classtan sonra:
+
+MethodInterception classını oluşturuyoruz. Esas olay burada:
+protected virtual void OnBefore(IInvocation invocation) { } //=> öncesinde çalışacak (imza, içi boş override edeceğiz.)
+protected virtual void OnAfter(IInvocation invocation) { } //=> sonrasında çalışacak (imza, içi boş override edeceğiz.)
+protected virtual void OnException(IInvocation invocation, System.Exception e) { } //=> hata alırsak çalışacak.
+protected virtual void OnSuccess(IInvocation invocation) { } //=> metod başarılı olursa çalışacak.
+public override void Intercept(IInvocation invocation) //=> bu kısım bizim hangi metodda kulanacağımız. (invocation metod demek.)
+        {
+            var isSuccess = true;
+            OnBefore(invocation); //=> metoddan önce çalışssın
+            try
+            {
+                invocation.Proceed();
+            }
+            catch (Exception e)
+            {
+                isSuccess = false;
+                OnException(invocation, e); //=> metod çalışırken hata olursa çalışsın.
+                throw;
+            }
+            finally
+            {
+                if (isSuccess)
+                {
+                    OnSuccess(invocation); //=> metod başarılı bir şekilde çalışırsa çalışsın.
+                }
+            }
+            OnAfter(invocation); //=> metod çalıştıktan sonra çalışsın.
+        }
+*** en çok OnBefore ve OnException'ı kullanacağız.(metoddan önce, hata olunca.)
+yukarıda class sayesinde buradaki try catchler uygulamak istediğimiz metodda çalışacak.
+bu sayede manager classlar içerisinde try cathler havada uçuşmayacak. :)
+** attribute eklediğimiz metodlar çalışmadan önce buradaki kurallardan geçecek.
+
+AspectInterceptorSelector classı:
+
+public class AspectInterceptorSelector : IInterceptorSelector
+    {
+        public IInterceptor[] SelectInterceptors(Type type, MethodInfo method, IInterceptor[] interceptors)
+        {
+            var classAttributes = type.GetCustomAttributes<MethodInterceptionBaseAttribute> //=> git classın attributelarını oku.
+                (true).ToList();
+            var methodAttributes = type.GetMethod(method.Name) //=> git metodun attributelarını oku.
+                .GetCustomAttributes<MethodInterceptionBaseAttribute>(true);
+            classAttributes.AddRange(methodAttributes);
+
+            return classAttributes.OrderBy(x => x.Priority).ToArray(); //=> atributeların çalışma sırasını önceliğe göre belirle.
+        }
+    }
+** using sytem reflection diyerek hata veren yerleri çözüyoruz.
+
+daha sonra Core katmanında Aspects klasörü onun içerisinde Autofac klasörü oluşturuyoruz.
+bu klasörde Validation, Loglama, Cachleme gibi işlemler yer alıyor.
+Bu nedenle Autofac klasörünün içerisinede Validation klasörü oluşturuyoruz.
+Bu klasör içerisinde ValidationAspect classını oluşturuyoruz.
+
+public class ValidationAspect : MethodInterception
+    {
+        private Type _validatorType;
+        public ValidationAspect(Type validatorType) //=> attribute da Type ile vermemiz gerekiyor.
+        {
+            if (!typeof(IValidator).IsAssignableFrom(validatorType)) //=> gönderilen validatorType bir IValidator değilse hata ver.
+            {
+                throw new System.Exception("Bu bir doğrulama sınıfı değil!"); //=> hata olarak ne dönsün?
+            }
+
+            _validatorType = validatorType;
+        }
+        protected override void OnBefore(IInvocation invocation) //=> metod öncesi çalışacak 
+        {
+            var validator = (IValidator)Activator.CreateInstance(_validatorType); //=> reflection
+            //=> Activator.CreateInstance => verdiğimiz validator ın çalışma anında bir instancesını oluştur.
+            var entityType = _validatorType.BaseType.GetGenericArguments()[0];
+            //=> _validatorType 'in base typeını bul. onunda Generic Argümanlarından ilkini al.
+            //=> ProductValidator => base type ı AbstractValidator<Product> => bununda generic argümanlarının ilki Product classı
+            var entities = invocation.Arguments.Where(t => t.GetType() == entityType);
+            //=> product classının parametlerini bul
+            foreach (var entity in entities) //=> parametrelerin her birini tek tek gez
+            {
+                ValidationTool.Validate(validator, entity); //=> ValidationTool'u kullanarak validate et.
+            }
+        }
+    }
+
+Bu classımızı da yaptıktan sonra.
+Manager classa gel. Add metodunun üstüne.
+[ValidationAspect(typeof(ProductValidator))]
+=> Validation aspect i attribute olarak çağır. içerisine ValidatorType ver
+Bu sayede add metodu çalışmadan önce (OnBefore kullanıyoruz. Validation Aspect içerisinde override ettik.)
+ValidationTool çalışarak metodu validate edecek.
+
+Bu sistemi kurmamıza rağmen bir şey eksik. oda bu validation sistemini kullanması gerektiğini belirtmemiz lazım bir yerde.
+Bu yer bussines içersinde DependecnyResolvers/Autofac içerisinde AutofacBusinessModule classı.
+Bu class eskiden IPruductService , IProducDal gibi yapılarımızı register ediyordu.
+Bunlar istendiğinde karşılık olarak hangi classları vereceğini belirtiyorduk.
+şimdi buraya bir yapı daha ekeleyeceğiz.
+var assembly ile başlayan yapı.
+ public class AutofacBusinessModule : Module
+    {
+        protected override void Load(ContainerBuilder builder)
+        {
+            // birisi senden IProductService isterse ProductManager register et demek.
+            // singleinstance tek bir instance oluşturuyor. (data tutmayan yerlerde kullanıyoruz).
+            builder.RegisterType<ProductManager>().As<IProductService>().SingleInstance();
+            // birisi IProductDal isterse EfProductDal ver.
+            // burada ProductManager newlenirken bir IProductDal istiyor. (consoledan hatırla).
+            builder.RegisterType<EfProductDal>().As<IProductDal>().SingleInstance();
+
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly(); //=> çalışan uygulama içerisinde
+
+            builder.RegisterAssemblyTypes(assembly).AsImplementedInterfaces() //=> implemente edilmiş interfaceleri bul.
+                .EnableInterfaceInterceptors(new ProxyGenerationOptions()
+                {
+                    Selector = new AspectInterceptorSelector() //=> bulduğun interfaceler için AspectInterceptorSelector 'ı çağır.
+                    //AspectInterceptorSelector Core katmanında Utilities/Interceptors içerisinde.
+                }).SingleInstance();
+        }
+    }
+** kısacası bu yapı register ettiğimiz bütün classlar ve interfaceleri için verilmiş bir aspect var mı [] ile metodun üstüne yazdığımız şey
+aspect. aspect varsa AspectInterceptorSelector ı çalıştırıyor.
+
+
+ancak bu şekilde kullanımlar yapmak yerine AoP teknikleri ile bunu daha iyi hale getirebiliriz.
+Bunun için github repodan kod almamız gerekiyor.
+Aldığımız kodları koyacağımız yerler.
+Core içerisinde, Utilities klasöründe Inteceptors klasörü oluşturuyoruz.
+Daha sonra içerisinde 
+AspectInterceptorSelector isimli class
+MethodInterception isimli class
+MethodInterceptionBaseAttribute isimli class
