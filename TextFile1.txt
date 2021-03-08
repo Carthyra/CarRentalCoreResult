@@ -493,3 +493,352 @@ Daha sonra içerisinde
 AspectInterceptorSelector isimli class
 MethodInterception isimli class
 MethodInterceptionBaseAttribute isimli class
+
+
+13 üncü Ders:
+iş katmanının içerisine iş kodları yazılır. 
+iş kuralları ile validasyon kuralları arasındaki farklara dikkat edelim.
+Validasyon genellikle veri tabanında da konulan kurallar. 
+Validasyon nesnemizin yapısal olarak uygun olup olmadığı.
+
+*** Cross Cutting Concerns ***
+Validation
+Log
+Cache
+Transaction
+Auth (yetkilendirme)
+=> bunları AoP yapıları ile yapıyoruz.
+
+AoP Demo:
+Business içerisinde CSS klasörü onun içerisinde de ILogger interface i.
+ILoggler interface içerisinde Log() metodunun imzası
+CSS içerisinde FileLogger classı oluşturduk. ILogger ile implemente ettik.
+Daha sonra DatabaseLogger classı oluşturduk. ILogger ile implemente ettik.
+Bu ILogger ı ProductManager içerisine injection yaptık.
+Fakat dependencyresolvers içerisinde de ILogger istenince FileLogger yada DatabaseLogger vermesi gerektiğine
+dair kodu eklememiz lazım.
+Bunun için:
+Business/DependencyResolvers/Autofac/AutofacBusinessModule.cs içerisinde
+builder.RegisterType<FileLogger>().As<ILogger>().SingleInstance();
+=> birisi senden ILogger isterse FileLogger ver demek.
+
+
+daha sonra ProductManager içerisinde Add metodunun içerisine
+tyr catch blogunu koyuyoruz.
+add işlemine ait kodları try içerisine koyuyoruz.
+
+** _logger.Log();
+try
+{
+    _productDal.Add(product);
+    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.
+}
+catch (Exception exception)
+{
+    _logger.Log();
+}
+return new ErrorResult();
+
+bu ekleme işlemi öncesinde Log() metodumuzun çalışması için try catch bloğunun üstüne _logger.Log();
+ekliyoruz.
+
+=> try üstüdeki _logger.Log(); ekleme işleminde başarılı olursa
+=> catch içerisindeki _logger.Log(); ekleme işleminde başarısız olursa
+loglama yapacak.
+ayrıca burada başarısız olursa bir ErrorResult dönebiliriz. =>(return new ErrorResult();)
+
+bu şekilde çalışacaktır.
+Ancak business kodlar ve Başka CrossCuttingConcerns kullanıyorsak burası çorbaya dönecektir.
+Bu nedenle AoP yapılarını kullanıyoruz. Hem daha temiz kod yazmak, hem de kod okunurluğunu arttırmak için.
+
+Biz bu yukarıdaki loglama işlemini AoP ile nasıl ele alıyoruz.
+Core katmanında/Utilites/Interceptors
+Interseption=> araya girmek demek. 
+metodun başında çalışmak => (OnBefore)
+metodun sonunda çalışmak => (OnAfter)
+hata alınca çalışmak => (OnException)
+metod başarılı olunca çalışmak => (OnSuccess)
+
+bu klasörde MethodInterception classımız var
+içerisinde virtula metodlar var.
+virtual metodlar onu ezmemizi bekleyen metodlar. (override) ile.
+
+Core Catmanında Aspects/Autofac/Validation/ValidationAspect.cs classında
+MethodInterception classını inherite ediyoruz.
+Bu nedenle ValidationAspect classı bize madem bir MethodInterception'ım.
+Benim ezmemi istediğin bir method var mı diyor.
+Bizde OnBefore metodunu IInvcaiton invocation için ez diyoruz.
+invocation metodumuzun adı.
+örneğimizde (kullandığımız yer) add metodunun üstünde.
+OnBefore => metodun başında çalışan.
+
+protected override void OnBefore(IInvocation invocation)
+{
+    var validator = (IValidator)Activator.CreateInstance(_validatorType);
+    var entityType = _validatorType.BaseType.GetGenericArguments()[0];
+    var entities = invocation.Arguments.Where(t => t.GetType() == entityType);
+    foreach (var entity in entities)
+        {
+            ValidationTool.Validate(validator, entity);
+        }
+}
+
+Coreda CrossCuttinConcerns/Validation/ValidaitonTool.cs classımız.
+bu class ne yapıyor.
+Buna bir <IValidator validator, object entity> veriyoruz.
+IValidator => Business/ValidationRules/FluentValidation/ProductValidator.cs
+yani ilgili metodun parametlerini validate etmek istediğimiz FluenValidation classı.
+yani kurallarımız olduğu class
+Object entitiy ise doğrulamak için verilen varlık.
+*** IValidator validator => doğrulama kurallarının olduğu class.
+*** Object entity => doğrulanacak class
+
+Core katmanında Aspects/Autofac/Validation/ValidationAspect.cs classı.
+Bu class aslında inherite alan classlar takip edildiğinde bir attribute olduğu ortaya çıkıyor.
+ve bu class constructorında Type validatorType istiyor.
+Bu nedenle ProductManager içerisinde Add metodunun üzerine
+
+[ValidationAspect(typeof(ProductValidator))]
+
+ValidationAspect => attribute içerisinde valitadorType alıyor.
+Attribute larda typelar typeof(atanaca_type) şeklinde atanıyor.
+
+Ayrıca ValidationAspect içerisindeki constructor da. şöyle bir yapı var.
+
+if (!typeof(IValidator).IsAssignableFrom(validatorType))
+{
+    throw new System.Exception("Bu bir doğrulama sınıfı değil!");
+}
+
+_validatorType = validatorType;
+
+bu yapı defensive coding. bunu yapmasakta attribute çalışacaktır.
+ancak attribute'a validatorType typeof() ile verildiğinden. herhangi bir 
+type verilmesi yetecektir. VS burada hata vermeyecektir. çalışma anında hata alacağız.
+Böyle bir şey olduğunda validatorType vermediğimizi anlamamız ve bize bir hata msj'ı dönmesini sağlamak
+için defensive coding yapıyoruz.
+
+if (!typeof(IValidator).IsAssignableFrom(validatorType))
+=> bu ifade verdiğin validatortype'ın bir IValidator mı bunu kontrol ediyor.
+=> IsAssignableFrom atabnabiliyor mu demek.
+Bu kontrol yapıldıktan sonra atanabilir bir validatorType ise
+_validatorType = validatorType;
+=> validatorType'ımız eşitleniyor.
+
+[ValidationAspect(typeof(ProductValidator))]
+=> burada validatorTypeımızı verdik ancak newlenmedi bellekte yok. bunun için 
+=> OnBefore içerisinde
+protected override void OnBefore(IInvocation invocation)
+{
+    var validator = (IValidator)Activator.CreateInstance(_validatorType);
+    var entityType = _validatorType.BaseType.GetGenericArguments()[0];
+    var entities = invocation.Arguments.Where(t => t.GetType() == entityType);
+    foreach (var entity in entities)
+    {
+        ValidationTool.Validate(validator, entity);
+    }
+}
+
+var validator = (IValidator)Activator.CreateInstance(_validatorType);
+=> ifadesi ile gönderidiğimiz validatorType için instance oluşturuyor. (çalışma anında)
+=> bu bir reflection kodu. Burada yapmamızın nedeni instace çalışma anında oluşyor.
+
+var entityType = _validatorType.BaseType.GetGenericArguments()[0];
+=> validatorType için ProductValidator ı verdik.
+=> yukarıdaki kod ProductValidator classına gidiyor.
+=> onun BaseType'ına bakıyor. (AbstractValidator<Product>)
+=> bu AbstractValidator'ın aldığı GenericArgümanlarından ilk (Product) argümanın tipini alıyor.
+
+var entities = invocation.Arguments.Where(t => t.GetType() == entityType);
+=> burada invocation metodumuz. ProductManager da Add metodunun üstünde kullandığımız için
+=> Add(Product product) argümanlarını geziyor.
+=> GetType ile Product tipini alıyor. 
+=> burada metodun argümanları birden fazla tip almış olabilir. bu durumda bütün tipleri alıyor.
+=> ve metodun argümanlarından aldığı tipleri bizim ProductValidator'ımızın baseclassının aldığı generic argümandan
+birisimi diye bakıyor ve bu tip için validate işlemini yap.
+
+
+*** CLEAN CODE ****
+*** Business Rules ***
+Bir kategoride en fazla 10 ürün olabilir (nasıl yazardın?)
+public IResult Add(Product product)
+{
+    // bir categoryde en fazla 10 ürün olabilir.
+
+    var result =_productDal.GetAll(p => p.CategoryId == product.CategoryId).Count;
+    if (result >= 10)
+    {
+        return new ErrorResult(Messages.ProductCountOfCategoryError);
+    }
+            
+    _productDal.Add(product);
+    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.    
+
+}
+
+Bu şekilde yazdık ama hoca yanlış yol dedi. Update ederken de bu kural geçerli.
+Bu şekilde yaparska bu kodları Update içine de yazılmalı.
+Bunu yaparsak DRY prensipine ayrkırı. (Dont Repeat Yourself)
+kendimizi tekrar edersek ileride 10 ürün 15 ürün olarak güncellenirse.
+kuralın yer aldığı bütün alanları düzeltmemiz gerekir.
+Bu şekilde yazarsak katmanlı mimari ileride bozulacaktır.
+
+bunu engellemek için ProductManager içerisinde en altta private metod oluşturuyoruz.
+private IResult CheckIfCategoryCountOfProduct(int categoryId)
+{
+    var result = _productDal.GetAll(p => p.CategoryId == categoryId).Count;
+    if (result >= 10)
+        {
+            return new ErrorResult(Messages.ProductCountOfCategoryError);
+        }
+
+    return new SuccessResult();
+}
+
+kullanmak için ise add metodunun içerisinde metodumuzu çağırıcaz.
+
+if (CheckIfCategoryCountOfProduct(product.CategoryId).Success)
+{
+    _productDal.Add(product);
+    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.   
+}
+
+return new ErrorResult(Messages.ProductCountOfCategoryError);
+
+ileride bu yapıyı iş motoru ile daha iyi bir hale getireceğiz.
+
+yeni iş kuralı : aynı isimde ürün eklenemez.
+
+private IResult CheckIfProductNameExists(string productName)
+{
+    var result = _productDal.GetAll(p => p.ProductName == productName).Any(); //any uyan kayıt var mı demek.
+    if (result == true)
+    {
+        return new ErrorResult(Messages.ProductNameAlreadyExists);
+    }
+
+    return new SuccessResult();
+}
+
+==> yukarıda any kullanmak yerine count da kullanabiliri. o zaman result>0 olması koşulunu if in içerisine alacağız.
+==> iş kurallarını zamanla başka dosyalara taşıyabiliriz. (başka classlara)
+
+iş kurallarımızı belirli bir standarta göre yazdık hepsi IResult döndürüyor.
+
+
+*** İş Motoru ***
+İş motoru yazarak iş kurallarının yönetilmesini daha düzgün hale getirebiliriz.
+İş motorunu yazarken poliformizn yapmamız lazım.
+Poliformizin neydi buna bakalım.
+
+Core katmanında:
+Core/Utilities/Business/BusinessRules.cs classını oluşturduk.
+içerisindeki metod static olacak çünkü bir araç ==> burası önemli.
+
+public static IResult Run(params IResult[] logics)
+{
+    foreach (var logic in logics) => logics iş kuralları, logic te iş kurallarından teki.
+    {
+        if (!logic.Success) => iş kuralı başarılı dönmezse (logic.Succes == false) ile aynı daha kısa yazımı
+        {
+            return logic; => kurala uymayanı döndür
+        }
+    }
+    return null; => başarılı olunca bir şey dönmesine gerek yok. yinede return null; diyoruz ki method hata vermesin.
+}
+
+(params IResult[] logics) => params verdiğimiz zaman Run() içerisine istediğimiz kadar IResult verebiliyoruz.
+BusinessRules.Run((CheckIfCategoryCountOfProduct(product.CategoryId),(CheckIfProductNameExists(product.ProductName))
+
+***** Javada bir metod static ise (newlenmeden kullanmak için, genellikle araç olan metodlar) metodun yer aldığı
+***** class da static olmalıdır.
+***** C# da classın da static olmasına gerek yoktur. ve class içerisinde static olan metod ve static olmayan metodlar yer alabilir.
+***** Böyle bir durumda static olmayan metodun kullanılabilmesi için new lenmesi gerekir.
+
+
+Bu metodumuzu ProductManager içerisinde çağırmak için:
+
+ IResult result = BusinessRules.Run(CheckIfProductNameExists(product.ProductName),
+                CheckIfCategoryCountOfProduct(product.ProductId));
+                => kurallarımızı verdik parametre olarak.
+if (result!=null) => result içerisi boş değilse, Yukarıda Run() metodunu tanımlarken başarılı ise null dön dedik.
+=> eğer dönen null değilse hata var demek. bu nedenle result!=null şartında result döndüyoruz.
+=> result IResult olduğundan dolayı aslında ErrorResult dönecek.
+{
+    return result;
+}
+            
+_productDal.Add(product);
+return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.
+
+BusinessRules classının interface'ini de yazabiliriz. ancak bu durum overdesing a girebilir.
+=> bu bir araç olduğu için class gözüyle bakmıyoruz. 
+=> çıplak class kalmasını burada es geçiyoruz.
+
+Yeni Kural : eğer mevcut kategori sayısı 15'i geçtiyse sisteme yeni ürün eklenemez.
+
+private IResult CheckIfCategoryNumber()
+{
+    var result = _categoryDal.GetAll().Count;
+    if (result>15)
+        {
+            return new ErrorResult();
+        }
+
+    return new SuccessResult();
+}
+
+Yukarıdaki kodun çalışabilmesi için ProductManager içerisine ICategoryDal'ı enjekte etmeliyiz. bunun için ise;
+
+IProductDal _productDal;
+ICategoryDal _categoryDal;
+
+public ProductManager(IProductDal productDal,ICategoryDal categoryDal)
+{
+    _productDal = productDal;
+    _categoryDal = categoryDal;
+}
+
+***** Bu şekilde yaptık ama hatalı. 
+***** Bir EntityManager (ProductManager, CategoryManager) kendisi hariç başka bir Dal'ı enjekte edemez.
+=> ProductManager ise IProductDal dışında bir Dal'ı enjekte edemez.
+***** Bunun nedeni, kategory için 15 adet dışında başka kurallarda eklerse ve bu yazılan kural başka yerlerde de kullanıyorsa
+***** gidip her yere injection yapman lazım ama bir yerden sonra patlar.
+=> örneğin kategory sayısı 15'i geçince yeni ürün eklenemez ama biz içecek ve deniz ürünlerini bu kurala tabi tutmuyoruz derse
+=> ortalık karışacaktır.
+
+***** Bunu düzeltmek için Dal yerine Service'ini enjekte edeceğiz.
+
+IProductDal _productDal; // burada ne inmemory nede entityframework adı geçecek.
+ICategoryService _categoryService;
+
+public ProductManager(IProductDal productDal,ICategoryService categoryService)
+{
+    _productDal = productDal;
+    _categoryService = categoryService;
+}
+
+ve iş kuralımızı categoryservice kullanarak yazmamız gerekiyor.
+CategoryService istediğimiz datayı veriyor bizde o datayı iş kuralımızda kullanıyoruz.
+Eğerki kuralı categorymanager içersine yazarsak bu durumda tek başına bir servistir.
+Ama burada kategoriservisi kullanan bir ürünün onu nasıl ele aldığıyla alakalıdır.
+İş kuralını da ProductManager içerisine şu şekilde yazıyoruz.
+
+private IResult CheckIfCategoryLimitExeceded()
+{
+    var result = _categoryService.GetAll().Data.Count;
+    if (result>15)
+    {
+        return new ErrorResult(Messages.CategoryLimitExceded);
+    }
+
+    return new SuccessResult();
+}
+
+şimdi iş kodlarımızda CategoryManager kullanıdığı için:
+Business/DependencyResolvers/Autofac/AutofacBusinessModule.cs dosyasında
+
+builder.RegisterType<CategoryManager>().As<ICategoryService>().SingleInstance();
+builder.RegisterType<EfCategoryDal>().As<ICategoryDal>().SingleInstance();
+
+diyerek bağımlılıklarını çözüyoruz.

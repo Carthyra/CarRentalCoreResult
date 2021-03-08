@@ -49,5 +49,13 @@ namespace Business.Constants
         public static string CustomerDeleted="Müşteri silindi.";
         public static string CustomerUpdated="Müşteri güncellendi.";
         public static string CarOnRent="Araç kiradan dönmedi.";
+        public static string CarImagesListed="Araçların resimleri listelendi.";
+        public static string CarImageListed="İstenilen araç resimi getirildi.";
+        public static string ImagesListedByCar="Araç resmi/resimleri listelend.";
+        public static string CarImagesListedByDateRange="Belirtilen tarih aralığındaki araç resimleri listelendi.";
+        public static string CarImageAdded="Araç resmi eklendi.";
+        public static string CarImageDeleted="Araç resmi silindi.";
+        public static string CarImageUpdated="Araç resmi güncellendi.";
+        public static string CarImageExecded="Bir aracın en fazla 5 adet resmi olabilir.";
     }
 }
