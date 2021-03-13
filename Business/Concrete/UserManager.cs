@@ -3,10 +3,9 @@ using System.Collections.Generic;
 using System.Text;
 using Business.Abstract;
 using Business.Constants;
-using Core.Utilities;
+using Core.Entities.Concrete;
 using Core.Utilities.Results;
 using DataAccess.Abstract;
-using Entities.Concrete;
 
 namespace Business.Concrete
 {
@@ -19,67 +18,19 @@ namespace Business.Concrete
             _userDal = userDal;
         }
 
-        public IDataResult<List<User>> GetAll()
+        public List<OperationClaim> GetClaims(User user)
         {
-            if (DateTime.Now.Hour == 22)
-            {
-                return new ErrorDataResult<List<User>>(Messages.Maintaince);
-            }
-            else
-            {
-                return new SuccessDataResult<List<User>>(_userDal.GetAll(), Messages.UsersListed);
-            }
+            return _userDal.GetClaims(user);
         }
 
-        public IDataResult<User> Get(int userId)
+        public void Add(User user)
         {
-            if (DateTime.Now.Hour == 23)
-            {
-                return new ErrorDataResult<User>(Messages.Maintaince);
-            }
-            else
-            {
-                return new SuccessDataResult<User>(_userDal.Get(u => u.Id == userId), Messages.UserListed);
-            }
+            _userDal.Add(user);
         }
 
-        public IResult Add(User user)
+        public User GetByMail(string email)
         {
-            if (DateTime.Now.Hour==23)
-            {
-                return new ErrorResult(Messages.Maintaince);
-            }
-            else
-            {
-                _userDal.Add(user);
-                return new SuccessResult(Messages.UserAdded);
-            }
-        }
-
-        public IResult Delete(User user)
-        {
-            if (DateTime.Now.Hour == 23)
-            {
-                return new ErrorResult(Messages.Maintaince);
-            }
-            else
-            {
-                _userDal.Delete(user);
-                return new SuccessResult(Messages.UserDeleted);
-            }
-        }
-
-        public IResult Update(User user)
-        {
-            if (DateTime.Now.Hour == 23)
-            {
-                return new ErrorResult(Messages.Maintaince);
-            }
-            else
-            {
-                _userDal.Update(user);
-                return new SuccessResult(Messages.UserUpdated);
-            }
+            return _userDal.Get(u => u.Email == email);
         }
     }
 }

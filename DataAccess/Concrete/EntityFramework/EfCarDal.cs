@@ -10,11 +10,11 @@ using Entities.DTOs;
 
 namespace DataAccess.Concrete.EntityFramework
 {
-    public class EfCarDal : EfEntityRepositoryBase<Car,CarRentanContex>,ICarDal
+    public class EfCarDal : EfEntityRepositoryBase<Car,CarRentalContex>,ICarDal
     {
         public List<CarDetailDto> GetCarDetails()
         {
-            using (CarRentanContex contex = new CarRentanContex())
+            using (CarRentalContex contex = new CarRentalContex())
             {
                 var joinresult = from c in contex.Car
                     join b in contex.Brand on c.BrandId equals b.BrandId

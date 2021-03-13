@@ -855,7 +855,7 @@ zorunda kalırız.
 bu nedenle yetkilendirme işlemlerini apinin de gerisinde yapıp aspect ler ile yöneteceğiz.
 
 JSON WEB TOKEN bazli güvenlik 
-auth ccs dür. uyglamayı dikine kesen corss cutting concern. AoP ile yapılacak.
+auth ccs dür. uyglamayı dikine kesen cross cutting concern. AoP ile yapılacak.
 bugün kullanacağımız yönetemler java tarafından spring de var. o nedenle bu yöntemin iyi olduğunu düşünüyoruz.
 
 [SecuredOperation("admin,editor")] //=> bu metodu çağırabilecek yetkiler. bunlar roller.
@@ -907,6 +907,7 @@ UserOperationClaims Tablosu: (hangi kullanıcıda hangi roller var)
 
 => useroperationclaims tablosunda UserId ile user tablosundaki id yi neden eşleştirmedik?
 => neden foreign key yapılarını kullanmadık?
+(carrental ödevinde kullandık)
 
 
 yetkilendirme ile ilgili entity leri oluştururken core da oluşturuyoruz.
@@ -921,7 +922,7 @@ Yukarıdaki tabloalrın DataAccess lerini yapacağız.
 
 IUserDal:
 => bu interface bir IEntityRepository<User> için.
-buraya ek olarak List<OperatinClaim> GetClaims(User user) metodunun imzasını atıyoruz.
+buraya ek olarak List<OperationClaim> GetClaims(User user) metodunun imzasını atıyoruz.
 buraya yazma nedenimiz join operasyonu.
 
 IOperationClaimDal
@@ -956,6 +957,9 @@ public List<OperationClaim> GetClaims(User user)
     }
 
 *** diğer oluşturduğumuz UserOperationClaim ve OperationClaim için Ef yapısını kurmamıza gerek yok.
+=> bunları bir manager a bağlamayacağız, peki sistem içerisinde eklemeler yapmak istersen bu durumda?
+=> admin yetkisi ile postmanden bunlara veri gönderebiliriz bence.
+
 
 Business katmanında IUserService i oluşturuyoruz.
 Burada yer alacak metod imzaları:
@@ -981,6 +985,7 @@ bu durumda DTO kullanacağız. (hem complex yapılarımız için hemde işimizi 
 *** complex type ile Dto aynı şey ancak sektörde Dto daha çok kullanılıyor.
 
 Şimdi bu nedenle Dto yapısı oluşturmamız lazım.
+Entitis katmanında DTOs içerisinde
 DTO içerisine UserForLoginDto oluşturuyoruz. IDto dan implemente oluyor.
 bu class içerisinde iki tane prop var
 -Email
@@ -1006,7 +1011,8 @@ kullanabiliriz.
 MVC içerisindeki model arayüzü ilgilendiren model için, doğru yerde kullanmak için
 Select List gibi. ancak genel bir model ise BackEnd de yer almalı.
 
-Kayıt olması durumunda biz kullanıcının diğer bilgilerinide isteyeceğiz.
+Kayıt olması durumunda biz kullanıcının diğer bilgilerinide isteyeceğiz. (loginde istediğimiz bilgiler dışında)
+FirstName, LastName, Email, Password gibi.
 
 *** Mantık şu bir kullanıcı sisteme login olmak istediğinde biz onun login bilgilerini kontrol edeceğiz,
 eğer kullanıcnın login olmak istediği bilgileri geçerli ise ona bir token vereceğiz,
@@ -1026,7 +1032,7 @@ JwT içerisinde;
 AccessToken classı:
 içerisinde 2 tane prop var:
 -Token (string)
--Expration (datetime) => token'ın geçerlilik süresi.
+-Expiration (datetime) => token'ın geçerlilik süresi.
 *** ileride refresh token altyapısı. kurabiliriz. => token'ın süresi bitince yeni bir token verilmesi gibi.
 (kullanıcıyı yeniden login etmek yerine yeni bir token verilmesi.)
 
@@ -1044,7 +1050,7 @@ TokenOptions classı;
 içerisinde yer alan proplar
 -Auidence string, => kullanıcı kitlesi
 -Issuer string, => imzalayan
--AccessTokenExpiration DateTime, => token'ın geçerlilik süresi
+-AccessTokenExpiration int, => token'ın geçerlilik süresi dakika cinsinden.(oyüzden bu classta int)
 -SecurityKey string,
 
 ***=> aslında bu optionslar web apide, appsettings.json dosyasında da yer alacak.
@@ -1133,6 +1139,8 @@ public class JwtHelper : ITokenHelper
 
         public JwtSecurityToken CreateJwtSecurityToken(TokenOptions tokenOptions, User user,
             SigningCredentials signingCredentials, List<OperationClaim> operationClaims)
+            => JwtSecurityToken System.IdentityModel.Tokens.jwt den geliyor.
+            => SigningCredentials System.IdentityModel.Tokens.jwt den geliyor.
         {
             var jwt = new JwtSecurityToken(
                 issuer: tokenOptions.Issuer,
@@ -1172,19 +1180,23 @@ public class JwtHelper : ITokenHelper
             => sonunada .ToArray() diyerek bu isimleri string array e çevirdik.
 
             return claims;
-            => şimdi claims leri oluşturup aldıımız için bu claims'i yukarıdaki CreateJwtSecırityToken metodunda kullanabiliriz.
+            => şimdi claims leri oluşturup aldıımız için bu claims'i yukarıdaki CreateJwtSecurityToken metodunda kullanabiliriz.
         }
     }
 
 SecurityKeyHelper***
+=> jwthelper da kullanmak için Core katmanında Security altında Encryption klasöründe
 => içerisinde bir metod olacak
+SecurityKeyHelper classı
 public static SecurityKey CreateSecurityKey(string securityKey)
 {
     return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityKey));
 }
+=> SecurityKey Microsoft.Identity.Model.Tokens dan geliyor.
 => yukarıdaki class sayesinde JwtHelper içerisinde SecurityKeyHelper'ı çağırabiliriz.
 
 SigningCredentialsHelper***
+=> buda Core katmanında Utilities içerisinde Security içerisinde Encryption klasöründe.
 => içerisinde bir metod olacak.
 public static SigningCredentials CreateSigningCredentials(SecurityKey securityKey)
 {
@@ -1193,7 +1205,7 @@ public static SigningCredentials CreateSigningCredentials(SecurityKey securityKe
 => SigningCredentials Microsoft.Identity.Model.Tokens dan geliyor.
 => bu metodda kullandığımız securityKey, SecurityKeyHelper ile oluşturduğumuz securityKey.
 
-*****SetClaims metodunda claims. ile gelecek metodları extend etmek için*****
+***** SetClaims metodunda claims. ile gelecek metodları extend etmek için *****
 Core katmanında yeni bir klasör oluşturuyoruz Extensions adında.
 bunun içerisinde ClaimExtension adında bir class oluşturduk. static olarak.
 bu class içerisinde extend edeceğimzi metodları yazacağız.
@@ -1254,7 +1266,7 @@ public interface IAuthService
         IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password);
         => IDataResult ile kullanıcı bilgilerini dönebiliriz.
         => parametre olarak userForRegisterDto'daki bilgileri ve bir tanede password alacağiz.
-        => aslında userForRegisterDto içerisinde Password alanı var ama emin değiliz,
+        => aslında userForRegisterDto içerisinde Password alanı var ama emin değiliz, ******** deniyorum.
         IDataResult<User> Login(UserForLoginDto userForLoginDto);
         => userForLoginDto içerisindeki alanları istiyoruz.
         IResult UserExists(string email);
@@ -1384,6 +1396,7 @@ public class HashingHelper
         }
 
         public static bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
+        => verify parametrelerinde out keywordi yok dikkat edelim.
         => kullanıcının login sırasında verdiği password'un hashleyerek, veritabanında ki hashlenmiş password ile karşılaştırılması.
         {
             using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
@@ -1609,7 +1622,7 @@ olabiliriz. bize token ve expiration döndü. ***
 
 *** fakat sisteme register ettiğimiz kullanıcının bilgilerini kullnarak sisteme login olmak istersek bu durumda
 şifre hatalı diye bir hata aldık, bu hatanın nedeni ise Core katmanında Security klasörünün altında
-HashingHelper içerisinde VerifyPasswordHash ile metdonun içerisinde
+HashingHelper içerisinde VerifyPasswordHash ile metodunun içerisinde
 
 using (var hmac = new System.Security.Cryptography.HMACSHA512()) => HMACSHA512 içerisinde passwordsalt'ı vermemişiz.
 using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt)) => bu şekilde olmalı.

@@ -13,27 +13,10 @@ namespace ConsoleUI
             //CarDetails();
             //BrandList();
             //ColorList();
-            //UserList();
             RentalManager rentalManager = new RentalManager(new EfRentalDal());
             Console.WriteLine(rentalManager.Add(new Rental { CarId = 1, CustomerId = 1, RentDate = DateTime.Today }).Message);
         }
 
-        private static void UserList()
-        {
-            UserManager userManager = new UserManager(new EfUserDal());
-            var userresult = userManager.GetAll();
-            if (userresult.Success == true)
-            {
-                foreach (var user in userresult.Data)
-                {
-                    Console.WriteLine(user.FirstName);
-                }
-            }
-            else
-            {
-                Console.WriteLine(userresult.Message);
-            }
-        }
 
         private static void ColorList()
         {
