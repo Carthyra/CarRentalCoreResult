@@ -739,7 +739,7 @@ public static IResult Run(params IResult[] logics)
 {
     foreach (var logic in logics) => logics iş kuralları, logic te iş kurallarından teki.
     {
-        if (!logic.Success) => iş kuralı başarılı dönmezse (logic.Succes == false) ile aynı daha kısa yazımı
+        if (!logic.Succes) => iş kuralı başarılı dönmezse (logic.Succes == false) ile aynı daha kısa yazımı
         {
             return logic; => kurala uymayanı döndür
         }
@@ -842,3 +842,825 @@ builder.RegisterType<CategoryManager>().As<ICategoryService>().SingleInstance();
 builder.RegisterType<EfCategoryDal>().As<ICategoryDal>().SingleInstance();
 
 diyerek bağımlılıklarını çözüyoruz.
+
+****SON ÖDEV bir kere daha tekrardan yaz.****
+=> kendi başımıza yapmalıyız. yapabilmeliyiz.
+
+****JSON WEB TOKEN****
+
+yetkilendirme işlemleri:
+aspnet mvc core dan gelen alışkanlık o kısmı kullanmıyacağız yetkilendirmeyi api kısmına taşırsak yetkilendirme
+kısımları apide kalır. ilerleyen zamanlarda başka bir api kullanmak istersek yetkilendirmeyi oraya taşımak
+zorunda kalırız.
+bu nedenle yetkilendirme işlemlerini apinin de gerisinde yapıp aspect ler ile yöneteceğiz.
+
+JSON WEB TOKEN bazli güvenlik 
+auth ccs dür. uyglamayı dikine kesen corss cutting concern. AoP ile yapılacak.
+bugün kullanacağımız yönetemler java tarafından spring de var. o nedenle bu yöntemin iyi olduğunu düşünüyoruz.
+
+[SecuredOperation("admin,editor")] //=> bu metodu çağırabilecek yetkiler. bunlar roller.
+[SecuredOperation("product.add,admin")]//=> yada operasyon bazında yetkisi olması
+//=> product.add metodu (Operasyon yetkisi) yetkisi yada admin yetkisi olması lazım.
+//=> bu yetkilere Claim deniliyor.
+
+Encryption
+Hashing
+=> bir datayı karşı taraf okuyamasın diye yapılmış bir şey.
+=> kullanıcı parolalarını veritabanında açıkta tutabiliriz.
+=> ama yinede parolalarımızı hashleriz. (güvenlik açığını kaptmak için.)
+Hashlemek:
+parolalar girildiğinde MD5 yada SHA1 şifreleme algortimaları ile geri dönülemez bir şekilde
+hashlenirler.
+
+Kullanıcıların girdiği parolaya bir şeyler ekleyerek daha güçlü hale getirmek.
+Buna Salting deniyor.
+
+Encryption:
+=> geri dönüşü olan bir şifreleme.
+Keyler vasıtası gibi.
+
+3 tane tablo ekledik veri tabanına.
+
+Users Tablosu:
+-Id,
+-FirstName
+-LastName
+-Email
+-Status => bit kullanıcı aktif mi pasif mi
+-PasswordHash =>binary(500) hasdeğeri
+-PasswordSalt =>binary(500) tuz,
+*** kulanıcıdan bir şifre vermesini isteriz ancak şifreyi veritabanında açık bir şekilde tutmayız.
+*** onun yerine parolayı hashliyoruz. normalde hashler geri döndürülemez.
+*** rainbow tablolar ile hashleri kırabiliyorlar. rainbow tablolar herşeyin hash karşılıkları var(basit olanların)
+*** bu nedenle kullanıcıdan aldığımız paroları salt ile güçlendiriyoruz.
+(parolaya bir şeyler ekliyoruz, gibi düşünelim.)
+
+OperationClaims Tablosu: (kullanıcıların rolleri)(sistemde var olan bütün roller)
+-Id
+-Name
+
+UserOperationClaims Tablosu: (hangi kullanıcıda hangi roller var)
+-Id
+-UserId
+-OperationClaimId
+
+
+=> useroperationclaims tablosunda UserId ile user tablosundaki id yi neden eşleştirmedik?
+=> neden foreign key yapılarını kullanmadık?
+
+
+yetkilendirme ile ilgili entity leri oluştururken core da oluşturuyoruz.
+Core katmanında Entities içerisinde Concrete klasörünün içerisinde. Entity classlarımızı oluşturuyoruz.
+veri tabanında binary olarak tanımladığımız kolonları
+=> public byte[] PasswordHash { get; set; }
+=> public byte[] PasswordSalt { get; set; }
+=> pulic bool Status { get; set; }
+sonlarına [] ekleyerek array olarak tanımlıyoruz.
+
+Yukarıdaki tabloalrın DataAccess lerini yapacağız.
+
+IUserDal:
+=> bu interface bir IEntityRepository<User> için.
+buraya ek olarak List<OperatinClaim> GetClaims(User user) metodunun imzasını atıyoruz.
+buraya yazma nedenimiz join operasyonu.
+
+IOperationClaimDal
+=> bu interface bir IEntityRepository<OperatinClaim> için.
+burada join yapısı yok o yüzden ekstra bir metod imzası tanımlamıyoruz.
+
+IUserOperationClaimDal
+=> bu interface bir IEntityRepository<UserOperationClaim> için.
+burada da join kullanmayacağız o yüzden ekstra bir metod imzası tanımlamıyoruz.
+
+*** Daha sınra NorthwindContex içerisinde yeni eklediğimiz tablolar ve entity classlar için 
+*** DbSet<> leri tanımlıyoruz.
+
+daha sonra bu interfacelerden bir tek User için Ef yapıyoruz.
+
+EfUserDal:
+=> bu class bir EfEntityRepositoryBase<User,NorthwindContex>,IUserDal için.
+=> IUserDal içinde join metodu oluduğu için buraya implemente ediyoruz.
+kodumuzun içeriğini burada dolduruyoruz.
+// bu metodda UserOperationClaim tablosu ile OperatinClaim tablosunu join etmemiz gerekiyor.
+public List<OperationClaim> GetClaims(User user)
+    {
+        using (var context = new NortwindContext())
+            {
+                var result = from operationClaim in context.OperationClaims
+                    join userOperationClaim in context.UserOperationCliams
+                        on operationClaim.Id equals userOperationClaim.OperationClaimId
+                    where userOperationClaim.UserId == user.Id
+                        select new OperationClaim{Id=opeeratinClaim.Id, Name=operationClaim.Name};
+                return result.ToList();
+            }
+    }
+
+*** diğer oluşturduğumuz UserOperationClaim ve OperationClaim için Ef yapısını kurmamıza gerek yok.
+
+Business katmanında IUserService i oluşturuyoruz.
+Burada yer alacak metod imzaları:
+List<OperationClaim> GetClaims(User user);
+User GetByMail(string email);
+void Add(User user);
+void Delete(User user);
+void Update(User user);
+
+Bu interfacein Managerı'nı kodlayacağız.
+
+UserManager : IUserService
+IUserDal _userDal injeksiyonu yapıyoruz.
+
+bunları yaptıkran sonra Autofac tarafında builder.RegisterType ları vereceğiz UserManager ve EfUserDal için.
+Dependency Resolvers da.
+
+şimdi sistemize kullanıcılar ya login olacak yada kayıt olacak.
+Login olması durumunda biz kullanıcıdan email ve şifre isteyeceğiz.
+=> ancak bu durumda bizim veri tabanımızda paroları açık bir şekilde tutmadığımız için password alanı yok.
+=> fakat passwordhash alanı var.
+bu durumda DTO kullanacağız. (hem complex yapılarımız için hemde işimizi görecek nesneler üretmek için kullanıyoruz.)
+*** complex type ile Dto aynı şey ancak sektörde Dto daha çok kullanılıyor.
+
+Şimdi bu nedenle Dto yapısı oluşturmamız lazım.
+DTO içerisine UserForLoginDto oluşturuyoruz. IDto dan implemente oluyor.
+bu class içerisinde iki tane prop var
+-Email
+-Password
+
+UserForRegisterDto oluşturuyoruz.
+IDto dan implemente oluyor.
+4 prop var içinde
+-Email
+-Password
+-FirstName
+-LastName
+
+bu iki dto da da password alanlarını string olarak alıyoruz. biz bu aldığımız stringleri tuzlayıp, hashleyip,
+haslediğimiz passwordleri veri tabanına kaydedeceğiz.
+
+*** EfUserDal içerisinde joinde OperationClaim kullandık eğer ileride dönecek şey içerisinde kullanıcı adı falan
+*** olması gerekirse orada OperationClaimDto kullanamamız gerekecektir. ihtiyacımız olan alan ancak FirstName ancak
+*** OperationClaim tablosunda öyle bir alanımız yok :)
+
+Biz bu dtoları Apinin (mvc tarafında) içinde yapmama nedenimiz, ileride apiden ayrılırsak başka apilere onlarda da
+kullanabiliriz.
+MVC içerisindeki model arayüzü ilgilendiren model için, doğru yerde kullanmak için
+Select List gibi. ancak genel bir model ise BackEnd de yer almalı.
+
+Kayıt olması durumunda biz kullanıcının diğer bilgilerinide isteyeceğiz.
+
+*** Mantık şu bir kullanıcı sisteme login olmak istediğinde biz onun login bilgilerini kontrol edeceğiz,
+eğer kullanıcnın login olmak istediği bilgileri geçerli ise ona bir token vereceğiz,
+token = json web token belirli bir formata sahip bir metin. biz kullanıcıya bir token verirsek, kullanıcı
+bu token ı değiştiremez. kullanıcı başka bir sistemde token oluşturup onu sistemize verse bile kabul edilmeyecek.
+bu token üretimi ni yapıp kullanıcıya verdikten sonra, kullanıcı yapacağı istekleri bu token vasıtası 
+ile gerçekleştirecek.
+bizde bu tokena göre,kullanıcının yetkilerine göre ve token'ının gerçeliliğine göre istekde bulunduğu işlemi
+yapıp yapmamasına izin vereceğiz.
+bu noktada token işlemleri evrensel işlem.
+bu nedenle core içerisinde tanımlanması gerekir.
+Core içerisinde Utilites İçerisinde Security klasörü oluşturuyoruz.
+bu klasörün içerisnde JwT klasörü oluşturuyoruz.
+bu klasörde
+
+JwT içerisinde;
+AccessToken classı:
+içerisinde 2 tane prop var:
+-Token (string)
+-Expration (datetime) => token'ın geçerlilik süresi.
+*** ileride refresh token altyapısı. kurabiliriz. => token'ın süresi bitince yeni bir token verilmesi gibi.
+(kullanıcıyı yeniden login etmek yerine yeni bir token verilmesi.)
+
+JwT İçerisinde;
+ITokenHelper => token üretimi gerçekleştirecek bir helper.
+=> bunu interface olarak tanımlama nedenimiz bugün jwt kullanıyoruz ama ilerde başka bir şey ile oluşturabiliriz.
+AccessToken CreateToken(User user, List<OperationClaim> operationClaims); 
+=> accesstoken create etmesi. hem kullanıcı için hemde rolleri için token oluşturması.
+
+JwT İçerisinde;
+TokenOptions classı;
+=> amacımız bir helper ile token üretmek. bizde jwthelper ile yapacağız ancak bir jwt'nin standartları var.
+=> ve bu standartları bizim veriyor olmamız lazım. (Audience, Issuer, AccessTokenExpiration, SecurityKey)
+=> bu standartların yer aldığı class bu.
+içerisinde yer alan proplar
+-Auidence string, => kullanıcı kitlesi
+-Issuer string, => imzalayan
+-AccessTokenExpiration DateTime, => token'ın geçerlilik süresi
+-SecurityKey string,
+
+***=> aslında bu optionslar web apide, appsettings.json dosyasında da yer alacak.
+
+şimdi JwT token'ımızı oluşturacak class
+JwT içerisinde;
+JwtHelper : ITokenHelper dan impelemente oluyor.
+implemente edilen kod.
+create token metodu implemente oluyor.
+**** bu alanı anlamak önemli ****
+
+public class JwtHelper : ITokenHelper
+    {
+        => burada webapi tarafındaki configürasyon dosyasını okuyacağız. bunun için 
+        => IConfituration'ı kullanıyoruz. (Microfost.Extensions.Configuration dan geliyor.)
+        public IConfiguration Configuration { get; } 
+        => web apideki appsetting dosyasını okumaya yarıyor.
+        => sadece get olması read only olması anlamına geliyor.
+        private TokenOptions _tokenOptions; 
+        => appsettings'de okunan değerleri bir nesneye atamamız lazım.
+        => ancak böyle bir nesne tanımlamadık. bu nesne nereden gelecek?
+        => jwt içindeki classtan!!!
+        private DateTime _accessTokenExpiration;
+        => biz AccessTokenExpiration'ı dakika olarak vermiştik.(tokenoptions içerisinde)
+        => ancak aşağıda CreateJwtSecurityToken metodu içerisinde kullanabilmemiz için tarih olması lazım.
+        => bu ifade ile ctor yapısı içerisine alacağız.
+        => accesstoken ne zaman geçersiz hale gelecek?
+        
+        public JwtHelper(IConfiguration configuration)
+        => yukarıdaki configuration'ın ctoru.
+        => burada webapi appsettings den gelen configuration ayarlarını okuyacağız.
+        => bu configuration ayarları okuyabilmek için bir tanede TokenOptions lazım.
+        => çünkü appsettings içerisinde yer alan tokenoptions ları bu neseneye aktaracağız.
+        => bunuda yukarıya belirtiyoruz.
+        {
+            Configuration = configuration;
+            _tokenOptions = Configuration.GetSection("TokenOptions").Get<TokenOptions>();
+            => Configuration dan token options kısmını oku.(Congiguration.GetSection("TokenOptions"))
+            => ve bu okuduğun değer TokenOptions nesnesine bind et.(Get<TokenOptions>())
+            => GetSection appsettings içerisindeki TokenOptions sectionına git ve al.
+            => Get<TokenOptions>() bu sınıfın değerleri ile maple(). json dan gelen Tokenoptions ı.
+            _accessTokenExpiration = DateTime.Now.AddMinutes(_tokenOptions.AccessTokenExpiration)
+            => dakika olarak verdiğimiz accesstokenexpiration'ı şuanın tarihine 10 dakika ekleyerek
+            => tarih formatına çevirdik.
+            => buna CreateJwtSecurityToken metodunda ihtiyacımız var.
+
+        }
+
+        public AccessToken CreateToken(User user, List<OperationClaim> operationClaims)
+        {
+            => token create ederken bize bazı bilgiler lazım. (aşağıdaki bilgiler)
+            _accessTokenExpiration = DateTime.Now.AddMinutes(_tokenOptions.AccessTokenExpiration);
+            => bunu yukarıda verebilirdik. ama hoca github da böyle vermiş, 1089 lineda da verirsek çalışacaktır.
+            var securityKey = SecurityKeyHelper.CreateSecurityKey(_tokenOptions.SecurityKey);
+            => token'ı encripte ederken bir (kendi bildiğimiz) anahtara ihtiyacımız var.
+            => bu security key token options dan geliyor.
+            => normalde buraya var securityKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_tokenOptions.SecurityKey))
+            => yazmam gerekirken ben bunu başka yerlerde de kullanırım diye
+            => Core katmanında Security içerisinde bir Encryption klasörü altında SecurityKeyHelper classında tanımlıyorum. (aşağıda)
+            var signingCredentials = SigningCredentialsHelper.CreateSigningCredentials(securityKey);
+            => security key ve algoritmamızı belirlediğimiz nesne SigningCredentials.
+            => yine encryption altında SigninCredentialsHelper classını tanımlıyoruz. (aşağıda)
+            var jwt = CreateJwtSecurityToken(_tokenOptions, user, signingCredentials, operationClaims);
+            => CreateJwtSecurityToken metodunu aşağıda tanımladık. bunun return nü nü kullanacağız. bunu bir değişkene atadık.
+            => artık elimizde bir jwtsecuritytoken mevcut, ancak elimizdeki bilgilere göre handlervasıtasıyla yazmamız lazım.
+            var jwtSecurityTokenHandler = new JwtSecurityTokenHandler();
+            => new JwtSecurityTokenHandler ile aldığımı jwt tokenı yazmak için kullanacağımız nesneyi newledik.
+            => JwtSecurityTokenHandler ise System.IdentityModel.Tokens.Jwt den geliyor.
+            var token = jwtSecurityTokenHandler.WriteToken(jwt);
+            => handler ile jwt'mizi token isimli değişkenimize yazdırıyoruz.
+
+            => yukarıdakileri tamamladıktan sonra artık bizim bir AccessToken döndürmemiz gerekiyor.
+            => aşağıdaki kod ile AccessToken ile token return etmemizi sağlıyor.
+            => AccessToken classını daha önce Core/Security/Jwt içerisinde oluşturduk.
+
+            return new AccessToken
+            {
+                Token = token,
+                => AccessToken içerisindeki Token'a yukarıda oluşturduğumuz token'ı atadık.
+                Expiration = _accessTokenExpiration
+                => AccessToken içerisindeki diğer prop ise Expiration (token'ın ne kadar süre geçerli olacağı ile ilgili)
+                => bu Expiration alanınada _accesTokenExpiration 'ı veriyoruz.
+            };
+
+        }
+
+        public JwtSecurityToken CreateJwtSecurityToken(TokenOptions tokenOptions, User user,
+            SigningCredentials signingCredentials, List<OperationClaim> operationClaims)
+        {
+            var jwt = new JwtSecurityToken(
+                issuer: tokenOptions.Issuer,
+                audience: tokenOptions.Audience,
+                expires: _accessTokenExpiration,
+                notBefore: DateTime.Now,
+                claims: SetClaims(user, operationClaims),
+                signingCredentials: signingCredentials
+            );
+            return jwt;
+            => yukarıdakileri tamamladıktan sonra artık jwt yi alabiliriz.
+            => daha tokenımız oluşmadı. CreateToken metoduna gidiyoruz.
+        }
+
+        private IEnumerable<Claim> SetClaims(User user, List<OperationClaim> operationClaims)
+        {
+            => CreateJwtSecurityToken metodunda claims: operationClaims olarak veriliyor.
+            => ancak burada claim leri crate etmediğimiz için bu metoda ihtiyaç duyuyoruz.
+            var claims = new List<Claim>();
+            => Claim türünde claims nesnesini oluşturduk.(list)
+            => daha sonra bu claims'e claimleri ekleyeceğiz.
+            => ancak claims. içerisinde AddEmail, AddName, AddNameIdentifier, AddRoles gibi metodlar yok.
+            => bu sorunu çözmek için extension yapısını kullanmamız lazım.
+            => claims içerisinde Add var. add kullanarak aslında aşağıdakileri verebiliriz.
+            => claims.Add(new Claim(email,user.Email)); gibi. bu kod çalışacaktır.
+            => ancak altyapı yazdığımız için ve bunları sürekli olarak kullanacağımız için (Core katmanındayız)
+            => extension yapısını kullanıyoruz.
+            claims.AddNameIdentifier(user.Id.ToString());
+            => claimsde extend ettiğimiz metod.
+            claims.AddEmail(user.Email);
+            => claimsde extend ettiğimiz metod.
+            claims.AddName($"{user.FirstName} {user.LastName}");
+            => burada $ ile vererek, "tırnaklar içerisinde kod yazabiliriyorz."
+            claims.AddRoles(operationClaims.Select(c => c.Name).ToArray());
+            => addroles için bir string array lazım. elimde operationclaims var(collection)
+            => buna select(c=>c.Name) diyerek operationclaims içerisindeki isimleri aldık.
+            => sonunada .ToArray() diyerek bu isimleri string array e çevirdik.
+
+            return claims;
+            => şimdi claims leri oluşturup aldıımız için bu claims'i yukarıdaki CreateJwtSecırityToken metodunda kullanabiliriz.
+        }
+    }
+
+SecurityKeyHelper***
+=> içerisinde bir metod olacak
+public static SecurityKey CreateSecurityKey(string securityKey)
+{
+    return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityKey));
+}
+=> yukarıdaki class sayesinde JwtHelper içerisinde SecurityKeyHelper'ı çağırabiliriz.
+
+SigningCredentialsHelper***
+=> içerisinde bir metod olacak.
+public static SigningCredentials CreateSigningCredentials(SecurityKey securityKey)
+{
+    return new SigningCredentials(securityKey,SecurityAlgorithms.HmacSha512Signature);
+}
+=> SigningCredentials Microsoft.Identity.Model.Tokens dan geliyor.
+=> bu metodda kullandığımız securityKey, SecurityKeyHelper ile oluşturduğumuz securityKey.
+
+*****SetClaims metodunda claims. ile gelecek metodları extend etmek için*****
+Core katmanında yeni bir klasör oluşturuyoruz Extensions adında.
+bunun içerisinde ClaimExtension adında bir class oluşturduk. static olarak.
+bu class içerisinde extend edeceğimzi metodları yazacağız.
+
+public static class ClaimExtensions
+    {
+        public static void AddEmail(this ICollection<Claim> claims, string email)
+        => bu metod neyi extend edecek (this ICollection<Claim> claims)
+        => ICollection türünde Claim i extend edeceğiz.
+        => bu metodun parametresi (string email)
+        => bu yukarıdaki ilk ifade sabit, bütün extend edeceğimiz metodlarda kullanacağız.
+        {
+            claims.Add(new Claim(JwtRegisteredClaimNames.Email, email));
+            => JwtRegisteredClaimNames ifadesi System.IdentityModelTokens.Jwt den geliyor.
+            => Email için bu hazır şeyi kullanabiliriz.
+            => kaydedilmiş isimleri kullanıyoruz, kendimiz Email demek yerine.
+        }
+
+        public static void AddName(this ICollection<Claim> claims, string name)
+        {
+            claims.Add(new Claim(ClaimTypes.Name, name));
+            => JwtRegisteredClaimNames içerisinde Name olmadığından dolayı
+            => ClaimTypes'ı kullanıyoruz. (ClaimTypes içerisinde Name var.)
+            => AddName ismi ClaimTypes içerisinde var.
+        }
+
+        public static void AddNameIdentifier(this ICollection<Claim> claims, string nameIdentifier)
+        {
+            claims.Add(new Claim(ClaimTypes.NameIdentifier, nameIdentifier));
+            => aynı şekilde JwtRegisteredClaimNames içerisinde NameIdentifier olmadığından dolayı
+            => ClaimTypes'ı kullanıyoruz. (ClaimTypes içerisinde NameIdentifier var.)
+            => AddNameIdentifier ismi ClaimTypes içerisinde var.
+            => nameIdentifier parametresi string buna dikkat!!!
+        }
+
+        public static void AddRoles(this ICollection<Claim> claims, string[] roles)
+        {
+            roles.ToList().ForEach(role => claims.Add(new Claim(ClaimTypes.Role, role)));
+            => burada claims.Add kısmını kullanmak yerine rolleri listeye al,
+            => ve foreach ile dön listeyi, her bir rolü claimlere ekle.
+            => string[] roles parametresi ile rolleri bir string array olarak isteyeceğiz.
+            => sistemimizde birden fazla rol tanımlı olabilir.
+            => AddRoles ismi ClaimTypes içerisinde var.
+        }
+    }
+*** şimdi yukarıdaki extensions ları yaptıktan sonra jwthelper içerisindeki SetClaims leri yapabiliriz.
+
+Yukarıdaki jwthelper clasını ve burada kullandığımız extensionları, securitykey helperları, setclaims metodlarını tamamladıktan sonra
+Login ve Register için servisleri yazmamız lazım.
+Bu servisleri business içerisinde yazacağız.
+Önce interfaceleri(servis olduğu için zaten interface) daha sonra manager'larınıda oluşturacağız.
+
+IAuthService => ile sisteme Login yada Register olacağım.
+burada metodlarımızı yazıyoruz.
+
+public interface IAuthService
+    {
+        IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password);
+        => IDataResult ile kullanıcı bilgilerini dönebiliriz.
+        => parametre olarak userForRegisterDto'daki bilgileri ve bir tanede password alacağiz.
+        => aslında userForRegisterDto içerisinde Password alanı var ama emin değiliz,
+        IDataResult<User> Login(UserForLoginDto userForLoginDto);
+        => userForLoginDto içerisindeki alanları istiyoruz.
+        IResult UserExists(string email);
+        => kullanıcı kayıt olurken daha önceden kayıt olmuş mu? burada mail ile kontrol yapacağız.
+        => aynı isimde birden fazla kullanıcı olabilir ancak bir mail adresleri unique olacaktır.
+        IDataResult<AccessToken> CreateAccessToken(User user);
+        => User için AccessToken oluşturulması.
+    }
+
+=> service'i yazdıktan sonra managerını oluşturacağız.
+
+public class AuthManager : IAuthService
+    {
+        IUserService _userService;
+        => kullanıcı kontrol edebilmek için bu lazım.
+        ITokenHelper _tokenHelper;
+        => kullanıcı login olduğunda ona bir token vermemiz lazım.
+        public AuthManager(IUserService userService, ITokenHelper tokenHelper)
+        {
+            _userService = userService;
+            _tokenHelper = tokenHelper;
+        }
+        public IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password)
+        {
+            byte[] passwordHash, passwordSalt;
+            => passwordHash ve passwordSalt byte array diye tanımladık.
+            => aşağıda passwordHash ve passwordSalt oluştuktan sonra bu byte arrayler atanacak.
+            HashingHelper.CreatePasswordHash(password, out passwordHash, out passwordSalt);
+            => işlemi bitirdikten sonra passwordHash ve passwordSalt oluşucak.
+            var user = new User
+            => register sırasında bir user oluşturacam diyoruz.
+            {
+                Email = userForRegisterDto.Email,
+                FirstName = userForRegisterDto.FirstName,
+                LastName = userForRegisterDto.LastName,
+                PasswordHash = passwordHash, =>passwordHash yukarıda oluşan passwordHash byte array
+                PasswordSalt = passwordSalt, =>passwordSalt yukarıda oluşan passwordSalt byte array
+                Status = true
+                => kullanıcı aktif mi? zaten ilk kez kayıt olduğunda aktifleştiriyoruz.
+                => bu durum farklı sistemlerde farklı davramamızı gerektirebilir.
+                => kullanıcı kayıt olur email adresinden doğrulama istersek bu durumda false veririz.
+                => yada kayıt olan kullanıcıyı birisinin onaylaması gerekirse false veririz
+                => onay yada doğrulama gelince trueya döner.
+            };
+            _userService.Add(user);
+            return new SuccessDataResult<User>(user, Messages.UserRegistered);
+        }
+
+        public IDataResult<User> Login(UserForLoginDto userForLoginDto)
+        {
+            var userToCheck = _userService.GetByMail(userForLoginDto.Email);
+            => kullanıcının userForLoginDto'sundan emaili al,
+            if (userToCheck == null)
+            => egerki dto da email gelmiyorsa bu durumda kullanıcı bulunamadı hatasını dön.
+            {
+                return new ErrorDataResult<User>(Messages.UserNotFound);
+            }
+
+            if (!HashingHelper.VerifyPasswordHash(userForLoginDto.Password, userToCheck.PasswordHash, userToCheck.PasswordSalt)) 
+            => parametrelerde userForLoginDto.Password'u hashle, userToCheck.PasswordHash (veritabanındaki hashlenmiş şifre)
+            => veri tabanındaki passwordSalt bunları kontrol et.
+            => daha önce kullanıcı register olurken verdiği password'u hashleyip (salt vasıtasıyla) veri tabanına kaydetmiştik
+            => kullanıcı login olurken verdiği password'u yeniden hasleyip (salt vasıtasıyla) veri tabanındaki hashlenmiş password ile
+            => aynımı bunu kontrol edeceğiz.
+            => bu hashleme işlemini burada yapmak yerine HashingHelper diye bir classın içinde yapalım.
+            {
+                => kontrol sonucunda aynı değillerse hatalı paralı mesajını döneceğiz.
+                return new ErrorDataResult<User>(Messages.PasswordError);
+            }
+
+            => kontrol sonucunda aynı ise kullanıcıya başarılı giriş yaptımız diye msj döneceğiz.
+            return new SuccessDataResult<User>(userToCheck, Messages.SuccessfulLogin);
+        }
+
+        public IResult UserExists(string email)
+        {
+            => bir kullanıcı kayıt olmaya çalıştığında sistemde böyle bir email olup olmadığının kontrolü için kullanacağız.
+            => böyle bir kullanıcı zaten var diye hata döndüreceğiz.
+            => bu metodu register işlemi içerisinde kullanacağiz.
+            if (_userService.GetByMail(email) != null)
+            {
+                => kullanıcı sistemdeyse email'i null dönmeyecek. kullanıcı zaten mevcut diye bir hata msjı alacak.
+                return new ErrorResult(Messages.UserAlreadyExists);
+            }
+            => kullanıcının maili sistemde yoksa başarılı dönecek.
+            return new SuccessResult();
+        }
+
+        public IDataResult<AccessToken> CreateAccessToken(User user)
+        {
+            var claims = _userService.GetClaims(user);
+            => kullanıcının bana rollerini ver ve claims isimli değişkene ata.
+            var accessToken = _tokenHelper.CreateToken(user, claims);
+            => kullanıcının claimslerini kullanara _tokenHelper ile CreateToken yap ve bunu accessToken değişkeninie ata.
+            return new SuccessDataResult<AccessToken>(accessToken, Messages.AccessTokenCreated);
+            => accessToken ve mesajını dön.
+        }
+    }
+
+*** artık accesstoken oluşturma da hazır. bu işlem business da bitti
+*** ama controllerımız yok. bunu yazmamız lazım. (apide)
+
+HashingHelper işlemi için Core katmanında, Utilities içinde, Security içinde, Hashing diye bir klasör oluşturdum.
+Bu klasör içerisinde HashingHelper classını oluşturduk.
+
+=> HashingHelper'ı kullanıcıdan aldığımız paroları salt vasıtasıyla hashleyip bunları veritabanına kaydetmek,
+=> login sırasında kullanıcının verdiği parolayı login esnasında yeniden salt vasıtasıyla hashleyip
+=> veritabanındaki hashlenmiş veri ile aynımı diye kontrollerimiz de kullanacağız.
+
+public class HashingHelper
+    {
+    => bu helper da iki metod olacak hash create eden, ve create edilmiş hash ile veritabanındaki hash'i karşılaştıran.
+        => hashcreate eden metod. (register esnasında kullanabiliriz.)
+        public static void CreatePasswordHash(string password, out byte[] passwordHash, out byte[] passwordSalt)
+        => out ifadesi hesaplanıp aynı isimdeki parametreye yazılması,
+        => passwordHash ile passwordSalt'ın byte[] array olması önemli.
+        {
+            using (var hmac = new System.Security.Cryptography.HMACSHA512())
+            => hashing algoritması
+            {
+                passwordSalt = hmac.Key; 
+                => anahtarımız,
+                kullandığımız algoritmanın ı an her kullanıcı için oluşturduğu key.
+                passwordHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+                => oluşturulah hashi passwordHash'e atadık.
+            }
+        }
+
+        public static bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
+        => kullanıcının login sırasında verdiği password'un hashleyerek, veritabanında ki hashlenmiş password ile karşılaştırılması.
+        {
+            using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
+            {
+                var computedHash = hmac.ComputeHash(Encoding.UTF8.GetBytes(password));
+                for (int i = 0; i < computedHash.Length; i++)
+                {
+                    => computedHash oluşturulan hash, passwordHash ise veritabanındaki kayıtlı hash.
+                    if (computedHash[i]!=passwordHash[i])
+                    {
+                        return false;
+                        => farklılık varsa devam etme return false ver (bool dönüyor metodumuz.)
+                    }
+                }
+                return true;
+                => farklılık yoksa true değeri dön (bool dönüyor metodumuz.)
+            }
+
+        }
+    }
+
+HashingHelperımız hazır şimdi AuthManager'a geri dönebiliriz.
+
+*** artık apide controllerımızı yazmalıyız.
+*** auth controller yada usercontroller isimlerini verebiliriz.
+Api katmanında Controller klasöründe AuthController classımızı oluşturduk.
+istersek add class değil add controller olarak da ekleyebiliriz.
+class olarak tanımlarsak:
+[Route("api/[contoller]")]
+[ApiController]
+yukarıdakileri vermemiz lazım.
+clasımızada Controller i implemente etmemiz lazım (Controller Microsoft.AspNetCore.Mvc den geliyor.)
+Bunların yerine direk add controller dersek bu durumda bu yukarıdakiler hazır olarak gelecek.
+controller tipini api olarka seçip empty olanı istiyoruz.
+
+    [Route("api/[controller]")]
+    [ApiController]
+    public class AuthController : Controller
+    {
+        =>bu noktada register ve login operasyonlarımız olacak.
+        private IAuthService _authService;
+
+        public AuthController(IAuthService authService)
+        => bu noktada bize AuthService lazım bunu injection yapacağız.
+        {
+            _authService = authService;
+        }
+
+        [HttpPost("login")]
+        => login işlemi bir post çünkü kullanıcı bize bilgilerini gönderecek
+        public ActionResult Login(UserForLoginDto userForLoginDto)
+        {
+            => kullanıcı kontrol ediyoruz. (kontrol _authservice.Login metodunun içerisinde oluyor.)
+            var userToLogin = _authService.Login(userForLoginDto);
+            if (!userToLogin.Success)
+            => eğer işlem sonucu başarılı değilse
+            {
+                return BadRequest(userToLogin.Message);
+                => badrequest ve msj dön.
+            }
+            
+            => burayı geçtiyse kullanıcı login oldu, buna accesstoken dönmemiz lazım.
+
+            var result = _authService.CreateAccessToken(userToLogin.Data);
+            => access token create ettik.
+            
+            if (result.Success)
+            => accesstoken dönme işlemide başarılımı bunuda kontrol edelim.
+            *** AuthManager da CreateAccessToken metodu içerisinde başarısız olma durumunda ne yapacağını belirtmedik.
+            *** kodumuzu iyileştirerek ne döneceği ne yapacağını belirtebiliriz. (ödevde bu şekilde yazalım.)
+            {
+                return Ok(result.Data);
+                => başarılıysa accesstoken dönecek.
+            }
+
+            return BadRequest(result.Message);
+            => başarısız ise AuthManagerda ki kod iyileştirmesini yaparak döneceği msjı belirtebiliriz.
+        }
+
+        [HttpPost("register")]
+        => register işlemi bir post
+        public ActionResult Register(UserForRegisterDto userForRegisterDto)
+        {
+            var userExists = _authService.UserExists(userForRegisterDto.Email);
+            => kayıt olma durumunda kullanıcı sistemde varmı kontrolü burada oluyor.
+            if (!userExists.Success)
+            => kullanıcı'nın maili varsa sistemde.
+            {
+                return BadRequest(userExists.Message);
+                => badrequest dön ve msjı dön.
+            }
+
+            => kullanıcı yoksa
+            var registerResult = _authService.Register(userForRegisterDto, userForRegisterDto.Password);
+            => AuthManager daki register metodunu kullanarak register et.
+            var result = _authService.CreateAccessToken(registerResult.Data);
+            => authmanagerdaki createaccesstoken ile accesstoken ürettik.
+            if (result.Success)
+            => accesstoken başarılı ise
+            {
+                return Ok(result.Data);
+                => accesstoken'ı dön
+            }
+
+            return BadRequest(result.Message);
+            => başarısız ise badrequest ve msj dön.
+            *** CreateAccessToken başarısız olursa ne olacak bunları business da AuthManager içerisinde
+            *** CreateAccessToken metodunda belirtmemiz lazım.
+        }
+    }
+
+bunları tamamladıktan sonra apinin bu verdiğimi servisleri resolve edebilmesi için
+Business katmanında DependencyResolvers klasöründe, Autofac klasöründe, 
+AutofacBusinessModule classında neyi neyle resolve edeceğini belirtmemiz lazım.
+
+
+builder.RegisterType<AuthManager>().As<IAuthService>();
+=> senden IAuthService istenirse AuthManager ver.
+builder.RegisterType<JwtHelper>().As<ITokenHelper>();
+=> ITokenHelper AuthManager içerisindeki injectionda (IUserService ve ITokenService var.)
+=> budurumda sadece AuthManager vermek yetmiyor.
+=> ITokenService içinde JwtHelper vermemiz gerekiyor.
+***JwtHelper a gidince bağımlıklarına bakıyorum
+Public JwtHelper(IConfiguration congiguratin)
+=> içerisindeki parametreye bağımlılığı var, bizim IConfiguration'ı kodlamamız gerekiyor.
+=> bunu nereye kodlayacağız?
+
+=> WebApi katmanında startup içerisinde IConfiguration operasyonu var.
+=> ancak configurasyonu henüz yapmadık.
+
+*** WebApi katmanında appsettings içerisinde json fortmatında configurasyonumuzu veriyoruz.
+"TokenOptions": {
+    "Auidence": "ulas@ulas.com", //=> bu iki alan çok önemli değil ama olmalı
+    "Issuer": "ulas@ulas.com", //=> bu iki alan çok önemli değil ama olmalı
+    "AccessTokenExpiration": 10, //=> önemli alan, token'ın kaç dakika geçerli olacağı,
+    "SecurityKey": "mysupersecretkeymysupersecretkey" //=> önemli alan, tokenı oluşturuken kullanılacak anahtar adı.
+    //=> bu alanın uzun olması önemi. buradaki jwt aspnet tarafından kullanılacak.
+},
+
+Yukarıdaki bütün alanları doğru yazdığımıza dikkat edelim.
+
+AppSettings içerisinde kongigürasyonlarıda yaptıktan sonra WebApi katmanında startup içerisine gidiyoruz.
+Burada da ayarlar yapmamı lazım.
+Burada neler yapabiliriz.
+Cors yapıları ile sistemize istek gönderebilecek domainler sınırlandırabiliriz.
+CORS => Cross Origin Request
+bunu ConfigureServices içerisinde
+
+services.AddCors(options=>
+    {
+        options.AddPolicy("AllowOrigin",=>policy adı
+            builder=>builder.WithOrigins("http://localhost:3000"));
+            => bu bize localhost:3000 den talep gelirse buna izin ver demek.
+            => burada daha fazla localhost yada domain belirtebiliriz.
+        
+    });
+
+yukarıdakini yaptıktan sonra yine startup içerisinde Configure içerisine middleware eklememiz gerekiyor.
+bu middlewarelerin sırası önemli!
+
+public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
+=>buranın içerisine ekleyeceğiz.
+{
+    app.UseCors(builder=>builder.WithOrigins("http://localhost:3000").AllowAnyHeader());
+    => allowanyheader header get,put,fetch,delete,patch gibi bütün http istekleri. (postmande var bunlar.)
+}
+
+*** ayrıca burada jwt için bir Authentication'nında servislere eklenmesi gerekiyor.
+*** hem Authentication hemde Authorization middlewarelerinin sisteme eklenmesi gerekiyor.
+*** Configure içerisinde kullanılan sürüme göre UseRoute'un altında UseAuthorization middleware'i olabilir.
+*** yoksa ekle. UseAuthorization ın üstüne ise UseAuthentication 'ı muhakkak ekle.
+(önce eve gireceğiz, daha sonra mutfağa gireceğiz)
+Authentication => bir yere girmek için anahtar(eve girmek için anahtar.)
+Authorization => girilen yerde ne yapılabilir (evin içerisinde neler yapılabilir.(hangi odalara girebilir gibi.))
+=> biz kullanıcıyı kullanıcı adı ve şifresiyle Authenticate edicez. ama token vasıtasıylada nerelere girebilir
+=> ne yapabilir neye yetkili bunları izleyeceğiz.
+
+ConfigureServices içerisinde autentication servisini yazacağız önce.
+
+(servisi yazarken ValidIssuer ve ValidAudience verirken bu alttakini tanımlamamız lazım) 
+var tokenOptions = Configuration.GetSection("TokenOptions").Get<TokenOptions>();
+=> bu değişken bizim appsettingsteki TokenOptison bölümünü okuyacak.
+=> GetSection("TokenOptions") ifadesi webapideki appsetting içerisinde verdiğimiz token options'ı okuyor.
+=> Get<TokenOptions> ifadesi ise Core katmaında Jwt içerisindeki TokenOptions nesnesine (classına) bağla.
+=> buradaki TokenOptions bizim kendimizin, Microsoft.AspNetCore.Identity deki değil.
+
+services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+                .AddJwtBearer(options =>
+                {
+                    options.TokenValidationParameters = new TokenValidationParameters
+                    {
+                        ValidateIssuer = true, => Issuer bilgisini validate et.
+                        ValidateAudience = true, => Auidence'side validate et.
+                        ValidateLifetime = true, => token'ın yaşam ömrünü kontrol edeyim mi?
+                        => bizim verdiğimiz AccessTokenExpiration süresi geçmiş mi ona bakıyor.
+                        => yukarıdaki kontrol et demek ama bunlar ne?
+                        ValidIssuer = tokenOptions.Issuer, 
+                        => ValidIssuer tokenoptions da bizim verdiğimiz.
+                        => yukarıda tokenOptions'ı tanımladım appsettinsden okudu.
+                        ValidAudience = tokenOptions.Audience,
+                        => ValidAudience tokenOptions da bizim verdiğimiz.
+                        => yukarıda tokenOptions'ı tanımladım appsettinsden okudu.
+                        ValidateIssuerSigningKey = true,
+                        => IssuerSigningKey'i validate et.
+                        IssuerSigningKey = SecurityKeyHelper.CreateSecurityKey(tokenOptions.SecurityKey)
+                        => validate edeceği IssuerSigniKey'i core katmanındaki SecurityKeyHelper ile oluşturduk.
+                        => parametre olarak verdiğimiz parametreyi ise tokenOptions ile 
+                        => webapideki appsettings içerisinden okuduk.
+                        => appsettings deki SecurityKey'i burada kullandık (mysupersecretkeymysupersecretkey)
+
+                    };
+                });
+
+=>JwtBearerDefaults Microsoft.AspNetCore.Autentication.JwtBearer dan geliyor.
+=> TokenValidationParameters daki alanları biz tokenla veriyoruz.
+örneğin Issuer olarak webapi de appsettings içerisinde TokenOptions da
+b"Issuer": "ulas@ulas.com" olarak bu bilgiyi veriyoruz.
+biz kullanıcıya token verdiğimiz zaman "Issuer": "ulas@ulas.com" bilgisinin geri gelmesi gerekiyor.
+bunu validate ediyor orada.
+
+*** yukarıdaki configürasyonuda tamamladıktan sonra, artık sistemize postman üzerinden (api üzerinden) register
+olabiliriz. bize token ve expiration döndü. ***
+
+*** fakat sisteme register ettiğimiz kullanıcının bilgilerini kullnarak sisteme login olmak istersek bu durumda
+şifre hatalı diye bir hata aldık, bu hatanın nedeni ise Core katmanında Security klasörünün altında
+HashingHelper içerisinde VerifyPasswordHash ile metdonun içerisinde
+
+using (var hmac = new System.Security.Cryptography.HMACSHA512()) => HMACSHA512 içerisinde passwordsalt'ı vermemişiz.
+using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt)) => bu şekilde olmalı.
+=> bizim kodumuzda yukarıdaki hata yok düzgün.
+=> HashingHelper içerisinde CreatePasswordHash içinde HMACSHA512 kısmı boş olmalı
+=> VerfiyPasswordHash içinde ise HMACSHA512 parametre olarak passwordsalt almalı.
+
+*** hem register olurken hemde login olurken token bilgisini görmüş oluyoruz.
+*** (register olduk ve tokenımız expire olduktan sonra.)
+
+*** şimdi geriye kalan bir kullanıcımıza yetki verip Authorization yapısını verelim.
+
+WebApi katmanında Controllers kısmına gidiyoruz.
+ProductsController içerisinde GetAll a gidip onun önüne
+[Authorize()] diyoruz. Bu bir attribute,
+=> [Authorize()] bunun içinin boş olması kullanıcı istek yaptığında Authenticate olması bizim için yeterli
+=> yani elinde bir geçerli bir token (süresi dolmamış) olması yeterli.
+
+şimdi sistemi çalıştırıp bir postman üzerinden bir getall yapmak istersek bize 401 Unauthorized diye bir hata verecek.
+biz postman üzerinde header a tıklayarak. key kısmına Authorization value kısmınıda Bearer token'ı yapıştırırsak
+sorun çözülecektir.
+Burada dikkat edeceğimiz husus Bearer ifadesi ile token arasında boşluk var.
+*** bunu yapsak bile halen 401 Unauthorized hatası alacağız.
+Bu hatanın nedeni WebApi katmanında middleware lerin içerisinde sıralama hatası var.
+
+Authentication => bir yere girmek için anahtar(eve girmek için anahtar.)
+Authorization => girilen yerde ne yapılabilir (evin içerisinde neler yapılabilir.(hangi odalara girebilir gibi.))
+
+şimdi biz UseAuthorization ın üstüne ise UseAuthentication 'ı muhakkak ekle demişiz.
+buradaki mantık hatası eve girmeden ne yapabiliriz onu demek istiyoruz. önce eve girmemiz lazım.
+bu nedenle önce eve gireceğiz, dana sonra evin içersinde mutfağa gireceğiz.
+
+UseAuthentication => önce bu,
+UseAuthorization => sonra bu olacak.
+
+bu hatayı giderdikten sonra postman üzerinden getall çalıştırmak istersek bu durumda çalışacak.
+
+*** fakat biz herkesin getall metoduna erişmesini istemiyoruz.
+Bunun için webapi içerisinde controller da getall önüne [Authorize()] eklemiştik.
+şimdi bunun içini dolduracağız.
+
+[Authorize(Roles = "Product.List")] => yani ürün listeyebilme yetkisi.
+
+=> şimdi denersek hata alacağız, http hatası 403 forbidden yani yetkiniz yok. sisteme login olan kullanıcımızın
+token içeriğinde bu bilgi yok :)
+
+***** Piyasadas bir çok rol yetkisi mvc (api) tarafında kontrol ediliyor. ama daha ileri teknik ise bunların
+backende taşınması***** bunu videoda anlatmadı.
+
+*** Bu rolleri kullancılara veri tabanında tanımlayacağız.
+OperationClaims tablosunda yetkileri tanımladıracağız.
+UserOperationClaims tablosunda kullanıcıların verilerini alacağız.
+
+*** gerekli roller tanımladıktan ve kullanıcılara atandıktan sonra, sistem çalışacaktır.

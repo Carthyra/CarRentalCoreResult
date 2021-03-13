@@ -135,7 +135,7 @@ namespace Business.Concrete
             var result = _carImageDal.GetAll(i => i.CarId == carId).Count;
             if (result>5)
             {
-                return new ErrorResult(Messages.CarImageExecded);
+                return new ErrorResult(Messages.CarImageExeecded);
             }
 
             return new SuccessResult();
