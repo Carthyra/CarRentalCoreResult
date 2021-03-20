@@ -4,7 +4,7 @@ using Core.Entities.Concrete;
 
 namespace DataAccess.Abstract
 {
-    public interface IOperationClaim : IEntityRepository<OperationClaim>
+    public interface IOperationClaimDal : IEntityRepository<OperationClaim>
     {
         
     }

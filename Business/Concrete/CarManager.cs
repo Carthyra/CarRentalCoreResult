@@ -2,8 +2,12 @@
 using System.Collections.Generic;
 using System.Text;
 using Business.Abstract;
+using Business.BusinessAspects.Autofac;
 using Business.Constants;
 using Business.ValidationRules.AutofacValidationRules;
+using Core.Aspects.Autofac.Caching;
+using Core.Aspects.Autofac.Performance;
+using Core.Aspects.Autofac.Transaction;
 using Core.Aspects.Autofac.Validation;
 using Core.CrossCuttingConcerns.Validaton;
 using Core.Utilities;
@@ -23,6 +27,9 @@ namespace Business.Concrete
             _cardal = cardal;
         }
 
+        [PerformanceAspect(5)]
+        [CacheAspect]
+        //[SecuredOperation("admin")]
         public IDataResult<List<Car>> GetAll()
         {
             if (DateTime.Now.Hour == 23)
@@ -36,6 +43,7 @@ namespace Business.Concrete
             
         }
 
+        [CacheAspect()]
         public IDataResult<Car> Get(int carId)
         {
             if (DateTime.Now.Hour == 23)
@@ -48,6 +56,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheAspect()]
         public IDataResult<List<Car>> GetByBrand(int brandId)
         {
             if (DateTime.Now.Hour == 23)
@@ -60,6 +69,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheAspect()]
         public IDataResult<List<Car>> GetByColor(int colorId)
         {
             if (DateTime.Now.Hour == 23)
@@ -72,6 +82,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheAspect()]
         public IDataResult<List<Car>> GetByPrice(int min, int max)
         {
             if (DateTime.Now.Hour == 23)
@@ -84,6 +95,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheAspect()]
         public IDataResult<List<Car>> GetByModelYear(int modelYear)
         {
             if (DateTime.Now.Hour == 23)
@@ -96,6 +108,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheAspect()]
         public IDataResult<List<CarDetailDto>> GetCarDetails()
         {
             if (DateTime.Now.Hour==23)
@@ -108,7 +121,21 @@ namespace Business.Concrete
             }
         }
 
+        [TransactionScopeAspect]
+        public IResult TransactionalTest(Car car)
+        {
+            Add(car);
+            if (car.DailyPrice<1000)
+            {
+                throw new Exception("");
+            }
+
+            Add(car);
+            return null;
+        }
+
         [ValidationAspect(typeof(CarValidator))]
+        [CacheRemoveAspect("ICarService.Get")]
         public IResult Add(Car car)
         {
             if (DateTime.Now.Hour == 23)
@@ -122,6 +149,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheRemoveAspect("ICarService.Get")]
         public IResult Delete(Car car)
         {
             if (DateTime.Now.Hour == 23)
@@ -135,6 +163,7 @@ namespace Business.Concrete
             }
         }
 
+        [CacheRemoveAspect("ICarService.Get")]
         public IResult Update(Car car)
         {
             if (DateTime.Now.Hour == 23)

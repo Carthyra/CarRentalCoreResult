@@ -3,6 +3,7 @@ using Core.Utilities;
 using Entities.Concrete;
 using System;
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 using System.Text;
 
 namespace Business.Constants
@@ -65,5 +66,15 @@ namespace Business.Constants
         public static string UserAlreadyExists="Kullanıcı sisteme kayıtlı.";
         public static string ClaimsListed="Claimler listelendir.";
         public static string AccessTokenCreated="Access token oluşturuldu.";
+        public static string UserOperationAdded;
+        public static string UserOperationDeleted;
+        public static string UserOperationUpdated;
+        public static string OperatinClaimAdded;
+        public static string OperatinClaimDeleted;
+        public static string OperatinClaimUpdated;
+        public static string UserClaimsListed;
+        public static string UsersOperationClaimsListed;
+        public static string OperationClaimsListed;
+        public static string AuthorizationDenied;
     }
 }

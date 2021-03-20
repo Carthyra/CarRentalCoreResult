@@ -22,7 +22,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getall")]
-        [Authorize()]
+        //[Authorize("Car.Get")]
         public IActionResult GetAll()
         {
             var result = _carService.GetAll();
@@ -35,6 +35,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("get")]
+        //[Authorize("Product.Get")]
         public IActionResult Get(int id)
         {
             var result = _carService.Get(id);
@@ -47,6 +48,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getbybrand")]
+        //[Authorize("Product.Get")]
         public IActionResult GetByBrand(int brandid)
         {
             var result = _carService.GetByBrand(brandid);
@@ -59,6 +61,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getbycolor")]
+        //[Authorize("Product.Get")]
         public IActionResult GetByColor(int colorid)
         {
             var result = _carService.GetByColor(colorid);
@@ -71,6 +74,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getbyprice")]
+        //[Authorize("Product.Get")]
         public IActionResult GetByPrice(int min, int max)
         {
             var result = _carService.GetByPrice(min,max);
@@ -83,6 +87,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getbymodelyear")]
+        //[Authorize("Product.Get")]
         public IActionResult GetByModelYear(int modelyear)
         {
             var result = _carService.GetByModelYear(modelyear);
@@ -95,6 +100,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpGet("getcardetails")]
+        //[Authorize("Product.Get")]
         public IActionResult GetCarDetails()
         {
             var result = _carService.GetCarDetails();
@@ -107,6 +113,8 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("add")]
+        //[Authorize("Product.ADU")]
+        //=> ADU : Add, Delete, Update
         public IActionResult Add(Car car)
         {
             var result = _carService.Add(car);
@@ -119,6 +127,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("delete")]
+        //[Authorize("Product.ADU")]
         public IActionResult Delete(Car car)
         {
             var result = _carService.Delete(car);
@@ -131,6 +140,7 @@ namespace WebAPI.Controllers
         }
 
         [HttpPost("update")]
+        //[Authorize("Product.ADU")]
         public IActionResult Update(Car car)
         {
             var result = _carService.Update(car);

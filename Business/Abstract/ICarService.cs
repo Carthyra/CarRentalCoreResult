@@ -17,6 +17,7 @@ namespace Business.Abstract
         IDataResult<List<Car>> GetByPrice(int min, int max);
         IDataResult<List<Car>> GetByModelYear(int modelYear);
         IDataResult<List<CarDetailDto>> GetCarDetails();
+        IResult TransactionalTest(Car car);
         IResult Add(Car car);
         IResult Delete(Car car);
         IResult Update(Car car);

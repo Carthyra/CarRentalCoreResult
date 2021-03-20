@@ -293,7 +293,7 @@ F12 ile arayıp bulduk.
 public static Validate(IValidator validator, object entity) ==> object entity dememizin nedeni dto, entity ler aslında object.
 {
 	var context = new ValidationContext<object>(entity); ==> Validation contex oluşturuyoruz generic.
-	//ProductValidator productValidator = new ProductValidator(); ==> productValidator ı oluşturduk.
+	ProductValidator productValidator = new ProductValidator(); ==> productValidator ı oluşturduk.
 	buna ihtiyacımı kalmadı.
 	var result = validator.Validate(context); ==> productValidator'ın contex için döndüğü değeri result değişkenine atadık.
 	if(!result.IsValid) ==> result valid değilse
@@ -343,7 +343,7 @@ Attributeları kullanmamızın nedeni loglama,validasyon gibi şeyleri metodlar�
 [AttributeUsage(AttributeTargets.Class | AttributeTargets.Method, AllowMultiple = true, Inherited = true)]
 public abstract class MethodInterceptionBaseAttribute : Attribute, IInterceptor
 {
-	public int Priority { get; set; }  //=> hangi attribute önce çalışsın.
+	public int Priority { get; set; }  => hangi attribute önce çalışsın.
 
 	public virtual void Intercept(IInvocation invocation)
 		{
@@ -365,14 +365,14 @@ IInvocation => da using dynamic proxy ile.
 Bu classtan sonra:
 
 MethodInterception classını oluşturuyoruz. Esas olay burada:
-protected virtual void OnBefore(IInvocation invocation) { } //=> öncesinde çalışacak (imza, içi boş override edeceğiz.)
-protected virtual void OnAfter(IInvocation invocation) { } //=> sonrasında çalışacak (imza, içi boş override edeceğiz.)
-protected virtual void OnException(IInvocation invocation, System.Exception e) { } //=> hata alırsak çalışacak.
-protected virtual void OnSuccess(IInvocation invocation) { } //=> metod başarılı olursa çalışacak.
-public override void Intercept(IInvocation invocation) //=> bu kısım bizim hangi metodda kulanacağımız. (invocation metod demek.)
+protected virtual void OnBefore(IInvocation invocation) { } => öncesinde çalışacak (imza, içi boş override edeceğiz.)
+protected virtual void OnAfter(IInvocation invocation) { } => sonrasında çalışacak (imza, içi boş override edeceğiz.)
+protected virtual void OnException(IInvocation invocation, System.Exception e) { } => hata alırsak çalışacak.
+protected virtual void OnSuccess(IInvocation invocation) { } => metod başarılı olursa çalışacak.
+public override void Intercept(IInvocation invocation) => bu kısım bizim hangi metodda kulanacağımız. (invocation metod demek.)
         {
             var isSuccess = true;
-            OnBefore(invocation); //=> metoddan önce çalışssın
+            OnBefore(invocation); => metoddan önce çalışssın
             try
             {
                 invocation.Proceed();
@@ -380,17 +380,17 @@ public override void Intercept(IInvocation invocation) //=> bu kısım bizim han
             catch (Exception e)
             {
                 isSuccess = false;
-                OnException(invocation, e); //=> metod çalışırken hata olursa çalışsın.
+                OnException(invocation, e); => metod çalışırken hata olursa çalışsın.
                 throw;
             }
             finally
             {
                 if (isSuccess)
                 {
-                    OnSuccess(invocation); //=> metod başarılı bir şekilde çalışırsa çalışsın.
+                    OnSuccess(invocation); => metod başarılı bir şekilde çalışırsa çalışsın.
                 }
             }
-            OnAfter(invocation); //=> metod çalıştıktan sonra çalışsın.
+            OnAfter(invocation); => metod çalıştıktan sonra çalışsın.
         }
 *** en çok OnBefore ve OnException'ı kullanacağız.(metoddan önce, hata olunca.)
 yukarıda class sayesinde buradaki try catchler uygulamak istediğimiz metodda çalışacak.
@@ -403,13 +403,13 @@ public class AspectInterceptorSelector : IInterceptorSelector
     {
         public IInterceptor[] SelectInterceptors(Type type, MethodInfo method, IInterceptor[] interceptors)
         {
-            var classAttributes = type.GetCustomAttributes<MethodInterceptionBaseAttribute> //=> git classın attributelarını oku.
+            var classAttributes = type.GetCustomAttributes<MethodInterceptionBaseAttribute> => git classın attributelarını oku.
                 (true).ToList();
-            var methodAttributes = type.GetMethod(method.Name) //=> git metodun attributelarını oku.
+            var methodAttributes = type.GetMethod(method.Name) => git metodun attributelarını oku.
                 .GetCustomAttributes<MethodInterceptionBaseAttribute>(true);
             classAttributes.AddRange(methodAttributes);
 
-            return classAttributes.OrderBy(x => x.Priority).ToArray(); //=> atributeların çalışma sırasını önceliğe göre belirle.
+            return classAttributes.OrderBy(x => x.Priority).ToArray(); => atributeların çalışma sırasını önceliğe göre belirle.
         }
     }
 ** using sytem reflection diyerek hata veren yerleri çözüyoruz.
@@ -422,27 +422,27 @@ Bu klasör içerisinde ValidationAspect classını oluşturuyoruz.
 public class ValidationAspect : MethodInterception
     {
         private Type _validatorType;
-        public ValidationAspect(Type validatorType) //=> attribute da Type ile vermemiz gerekiyor.
+        public ValidationAspect(Type validatorType) => attribute da Type ile vermemiz gerekiyor.
         {
-            if (!typeof(IValidator).IsAssignableFrom(validatorType)) //=> gönderilen validatorType bir IValidator değilse hata ver.
+            if (!typeof(IValidator).IsAssignableFrom(validatorType)) => gönderilen validatorType bir IValidator değilse hata ver.
             {
-                throw new System.Exception("Bu bir doğrulama sınıfı değil!"); //=> hata olarak ne dönsün?
+                throw new System.Exception("Bu bir doğrulama sınıfı değil!"); => hata olarak ne dönsün?
             }
 
             _validatorType = validatorType;
         }
-        protected override void OnBefore(IInvocation invocation) //=> metod öncesi çalışacak 
+        protected override void OnBefore(IInvocation invocation) => metod öncesi çalışacak 
         {
-            var validator = (IValidator)Activator.CreateInstance(_validatorType); //=> reflection
-            //=> Activator.CreateInstance => verdiğimiz validator ın çalışma anında bir instancesını oluştur.
+            var validator = (IValidator)Activator.CreateInstance(_validatorType); => reflection
+            => Activator.CreateInstance => verdiğimiz validator ın çalışma anında bir instancesını oluştur.
             var entityType = _validatorType.BaseType.GetGenericArguments()[0];
-            //=> _validatorType 'in base typeını bul. onunda Generic Argümanlarından ilkini al.
-            //=> ProductValidator => base type ı AbstractValidator<Product> => bununda generic argümanlarının ilki Product classı
+            => _validatorType 'in base typeını bul. onunda Generic Argümanlarından ilkini al.
+            => ProductValidator => base type ı AbstractValidator<Product> => bununda generic argümanlarının ilki Product classı
             var entities = invocation.Arguments.Where(t => t.GetType() == entityType);
-            //=> product classının parametlerini bul
-            foreach (var entity in entities) //=> parametrelerin her birini tek tek gez
+            => product classının parametlerini bul
+            foreach (var entity in entities) => parametrelerin her birini tek tek gez
             {
-                ValidationTool.Validate(validator, entity); //=> ValidationTool'u kullanarak validate et.
+                ValidationTool.Validate(validator, entity); => ValidationTool'u kullanarak validate et.
             }
         }
     }
@@ -464,20 +464,20 @@ var assembly ile başlayan yapı.
     {
         protected override void Load(ContainerBuilder builder)
         {
-            // birisi senden IProductService isterse ProductManager register et demek.
-            // singleinstance tek bir instance oluşturuyor. (data tutmayan yerlerde kullanıyoruz).
+             birisi senden IProductService isterse ProductManager register et demek.
+             singleinstance tek bir instance oluşturuyor. (data tutmayan yerlerde kullanıyoruz).
             builder.RegisterType<ProductManager>().As<IProductService>().SingleInstance();
-            // birisi IProductDal isterse EfProductDal ver.
-            // burada ProductManager newlenirken bir IProductDal istiyor. (consoledan hatırla).
+             birisi IProductDal isterse EfProductDal ver.
+             burada ProductManager newlenirken bir IProductDal istiyor. (consoledan hatırla).
             builder.RegisterType<EfProductDal>().As<IProductDal>().SingleInstance();
 
-            var assembly = System.Reflection.Assembly.GetExecutingAssembly(); //=> çalışan uygulama içerisinde
+            var assembly = System.Reflection.Assembly.GetExecutingAssembly(); => çalışan uygulama içerisinde
 
-            builder.RegisterAssemblyTypes(assembly).AsImplementedInterfaces() //=> implemente edilmiş interfaceleri bul.
+            builder.RegisterAssemblyTypes(assembly).AsImplementedInterfaces() => implemente edilmiş interfaceleri bul.
                 .EnableInterfaceInterceptors(new ProxyGenerationOptions()
                 {
-                    Selector = new AspectInterceptorSelector() //=> bulduğun interfaceler için AspectInterceptorSelector 'ı çağır.
-                    //AspectInterceptorSelector Core katmanında Utilities/Interceptors içerisinde.
+                    Selector = new AspectInterceptorSelector() => bulduğun interfaceler için AspectInterceptorSelector 'ı çağır.
+                    AspectInterceptorSelector Core katmanında Utilities/Interceptors içerisinde.
                 }).SingleInstance();
         }
     }
@@ -531,7 +531,7 @@ add işlemine ait kodları try içerisine koyuyoruz.
 try
 {
     _productDal.Add(product);
-    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.
+    return new SuccessResult(Messages.ProductAdded);  bir result dönmesi lazım.
 }
 catch (Exception exception)
 {
@@ -663,7 +663,7 @@ birisimi diye bakıyor ve bu tip için validate işlemini yap.
 Bir kategoride en fazla 10 ürün olabilir (nasıl yazardın?)
 public IResult Add(Product product)
 {
-    // bir categoryde en fazla 10 ürün olabilir.
+     bir categoryde en fazla 10 ürün olabilir.
 
     var result =_productDal.GetAll(p => p.CategoryId == product.CategoryId).Count;
     if (result >= 10)
@@ -672,7 +672,7 @@ public IResult Add(Product product)
     }
             
     _productDal.Add(product);
-    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.    
+    return new SuccessResult(Messages.ProductAdded);  bir result dönmesi lazım.    
 
 }
 
@@ -700,7 +700,7 @@ kullanmak için ise add metodunun içerisinde metodumuzu çağırıcaz.
 if (CheckIfCategoryCountOfProduct(product.CategoryId).Success)
 {
     _productDal.Add(product);
-    return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.   
+    return new SuccessResult(Messages.ProductAdded);  bir result dönmesi lazım.   
 }
 
 return new ErrorResult(Messages.ProductCountOfCategoryError);
@@ -711,7 +711,7 @@ yeni iş kuralı : aynı isimde ürün eklenemez.
 
 private IResult CheckIfProductNameExists(string productName)
 {
-    var result = _productDal.GetAll(p => p.ProductName == productName).Any(); //any uyan kayıt var mı demek.
+    var result = _productDal.GetAll(p => p.ProductName == productName).Any(); any uyan kayıt var mı demek.
     if (result == true)
     {
         return new ErrorResult(Messages.ProductNameAlreadyExists);
@@ -769,7 +769,7 @@ if (result!=null) => result içerisi boş değilse, Yukarıda Run() metodunu tan
 }
             
 _productDal.Add(product);
-return new SuccessResult(Messages.ProductAdded); // bir result dönmesi lazım.
+return new SuccessResult(Messages.ProductAdded);  bir result dönmesi lazım.
 
 BusinessRules classının interface'ini de yazabiliriz. ancak bu durum overdesing a girebilir.
 => bu bir araç olduğu için class gözüyle bakmıyoruz. 
@@ -809,7 +809,7 @@ public ProductManager(IProductDal productDal,ICategoryDal categoryDal)
 
 ***** Bunu düzeltmek için Dal yerine Service'ini enjekte edeceğiz.
 
-IProductDal _productDal; // burada ne inmemory nede entityframework adı geçecek.
+IProductDal _productDal;  burada ne inmemory nede entityframework adı geçecek.
 ICategoryService _categoryService;
 
 public ProductManager(IProductDal productDal,ICategoryService categoryService)
@@ -855,13 +855,13 @@ zorunda kalırız.
 bu nedenle yetkilendirme işlemlerini apinin de gerisinde yapıp aspect ler ile yöneteceğiz.
 
 JSON WEB TOKEN bazli güvenlik 
-auth ccs dür. uyglamayı dikine kesen cross cutting concern. AoP ile yapılacak.
+auth ccs dür. uyglamayı dikine kesen corss cutting concern. AoP ile yapılacak.
 bugün kullanacağımız yönetemler java tarafından spring de var. o nedenle bu yöntemin iyi olduğunu düşünüyoruz.
 
-[SecuredOperation("admin,editor")] //=> bu metodu çağırabilecek yetkiler. bunlar roller.
-[SecuredOperation("product.add,admin")]//=> yada operasyon bazında yetkisi olması
-//=> product.add metodu (Operasyon yetkisi) yetkisi yada admin yetkisi olması lazım.
-//=> bu yetkilere Claim deniliyor.
+[SecuredOperation("admin,editor")] => bu metodu çağırabilecek yetkiler. bunlar roller.
+[SecuredOperation("product.add,admin")]=> yada operasyon bazında yetkisi olması
+=> product.add metodu (Operasyon yetkisi) yetkisi yada admin yetkisi olması lazım.
+=> bu yetkilere Claim deniliyor.
 
 Encryption
 Hashing
@@ -887,8 +887,11 @@ Users Tablosu:
 -LastName
 -Email
 -Status => bit kullanıcı aktif mi pasif mi
--PasswordHash =>binary(500) hasdeğeri
--PasswordSalt =>binary(500) tuz,
+-PasswordHash => varbinary(500) hasdeğeri
+-PasswordSalt => varbinary(500) tuz
+=> yukarıdaki iki alanı binary olarak tanımlarsak bu durumda register esnasında bir sorun yok, 
+=> ancak register ettiğimiz kullanıcı bilgileri ile sisteme login olmak istediğimizde parola hatası alıyoruz.
+=> bunun nedeni binaryde 500 karaktere tamamlaması, varbinaryde ise maksimmum 500 karakter!!!!
 *** kulanıcıdan bir şifre vermesini isteriz ancak şifreyi veritabanında açık bir şekilde tutmayız.
 *** onun yerine parolayı hashliyoruz. normalde hashler geri döndürülemez.
 *** rainbow tablolar ile hashleri kırabiliyorlar. rainbow tablolar herşeyin hash karşılıkları var(basit olanların)
@@ -907,7 +910,6 @@ UserOperationClaims Tablosu: (hangi kullanıcıda hangi roller var)
 
 => useroperationclaims tablosunda UserId ile user tablosundaki id yi neden eşleştirmedik?
 => neden foreign key yapılarını kullanmadık?
-(carrental ödevinde kullandık)
 
 
 yetkilendirme ile ilgili entity leri oluştururken core da oluşturuyoruz.
@@ -922,7 +924,7 @@ Yukarıdaki tabloalrın DataAccess lerini yapacağız.
 
 IUserDal:
 => bu interface bir IEntityRepository<User> için.
-buraya ek olarak List<OperationClaim> GetClaims(User user) metodunun imzasını atıyoruz.
+buraya ek olarak List<OperatinClaim> GetClaims(User user) metodunun imzasını atıyoruz.
 buraya yazma nedenimiz join operasyonu.
 
 IOperationClaimDal
@@ -942,7 +944,7 @@ EfUserDal:
 => bu class bir EfEntityRepositoryBase<User,NorthwindContex>,IUserDal için.
 => IUserDal içinde join metodu oluduğu için buraya implemente ediyoruz.
 kodumuzun içeriğini burada dolduruyoruz.
-// bu metodda UserOperationClaim tablosu ile OperatinClaim tablosunu join etmemiz gerekiyor.
+ bu metodda UserOperationClaim tablosu ile OperatinClaim tablosunu join etmemiz gerekiyor.
 public List<OperationClaim> GetClaims(User user)
     {
         using (var context = new NortwindContext())
@@ -957,9 +959,6 @@ public List<OperationClaim> GetClaims(User user)
     }
 
 *** diğer oluşturduğumuz UserOperationClaim ve OperationClaim için Ef yapısını kurmamıza gerek yok.
-=> bunları bir manager a bağlamayacağız, peki sistem içerisinde eklemeler yapmak istersen bu durumda?
-=> admin yetkisi ile postmanden bunlara veri gönderebiliriz bence.
-
 
 Business katmanında IUserService i oluşturuyoruz.
 Burada yer alacak metod imzaları:
@@ -985,7 +984,6 @@ bu durumda DTO kullanacağız. (hem complex yapılarımız için hemde işimizi 
 *** complex type ile Dto aynı şey ancak sektörde Dto daha çok kullanılıyor.
 
 Şimdi bu nedenle Dto yapısı oluşturmamız lazım.
-Entitis katmanında DTOs içerisinde
 DTO içerisine UserForLoginDto oluşturuyoruz. IDto dan implemente oluyor.
 bu class içerisinde iki tane prop var
 -Email
@@ -1011,8 +1009,7 @@ kullanabiliriz.
 MVC içerisindeki model arayüzü ilgilendiren model için, doğru yerde kullanmak için
 Select List gibi. ancak genel bir model ise BackEnd de yer almalı.
 
-Kayıt olması durumunda biz kullanıcının diğer bilgilerinide isteyeceğiz. (loginde istediğimiz bilgiler dışında)
-FirstName, LastName, Email, Password gibi.
+Kayıt olması durumunda biz kullanıcının diğer bilgilerinide isteyeceğiz.
 
 *** Mantık şu bir kullanıcı sisteme login olmak istediğinde biz onun login bilgilerini kontrol edeceğiz,
 eğer kullanıcnın login olmak istediği bilgileri geçerli ise ona bir token vereceğiz,
@@ -1032,7 +1029,7 @@ JwT içerisinde;
 AccessToken classı:
 içerisinde 2 tane prop var:
 -Token (string)
--Expiration (datetime) => token'ın geçerlilik süresi.
+-Expration (datetime) => token'ın geçerlilik süresi.
 *** ileride refresh token altyapısı. kurabiliriz. => token'ın süresi bitince yeni bir token verilmesi gibi.
 (kullanıcıyı yeniden login etmek yerine yeni bir token verilmesi.)
 
@@ -1050,7 +1047,7 @@ TokenOptions classı;
 içerisinde yer alan proplar
 -Auidence string, => kullanıcı kitlesi
 -Issuer string, => imzalayan
--AccessTokenExpiration int, => token'ın geçerlilik süresi dakika cinsinden.(oyüzden bu classta int)
+-AccessTokenExpiration DateTime, => token'ın geçerlilik süresi
 -SecurityKey string,
 
 ***=> aslında bu optionslar web apide, appsettings.json dosyasında da yer alacak.
@@ -1139,8 +1136,6 @@ public class JwtHelper : ITokenHelper
 
         public JwtSecurityToken CreateJwtSecurityToken(TokenOptions tokenOptions, User user,
             SigningCredentials signingCredentials, List<OperationClaim> operationClaims)
-            => JwtSecurityToken System.IdentityModel.Tokens.jwt den geliyor.
-            => SigningCredentials System.IdentityModel.Tokens.jwt den geliyor.
         {
             var jwt = new JwtSecurityToken(
                 issuer: tokenOptions.Issuer,
@@ -1180,23 +1175,19 @@ public class JwtHelper : ITokenHelper
             => sonunada .ToArray() diyerek bu isimleri string array e çevirdik.
 
             return claims;
-            => şimdi claims leri oluşturup aldıımız için bu claims'i yukarıdaki CreateJwtSecurityToken metodunda kullanabiliriz.
+            => şimdi claims leri oluşturup aldıımız için bu claims'i yukarıdaki CreateJwtSecırityToken metodunda kullanabiliriz.
         }
     }
 
 SecurityKeyHelper***
-=> jwthelper da kullanmak için Core katmanında Security altında Encryption klasöründe
 => içerisinde bir metod olacak
-SecurityKeyHelper classı
 public static SecurityKey CreateSecurityKey(string securityKey)
 {
     return new SymmetricSecurityKey(Encoding.UTF8.GetBytes(securityKey));
 }
-=> SecurityKey Microsoft.Identity.Model.Tokens dan geliyor.
 => yukarıdaki class sayesinde JwtHelper içerisinde SecurityKeyHelper'ı çağırabiliriz.
 
 SigningCredentialsHelper***
-=> buda Core katmanında Utilities içerisinde Security içerisinde Encryption klasöründe.
 => içerisinde bir metod olacak.
 public static SigningCredentials CreateSigningCredentials(SecurityKey securityKey)
 {
@@ -1205,7 +1196,7 @@ public static SigningCredentials CreateSigningCredentials(SecurityKey securityKe
 => SigningCredentials Microsoft.Identity.Model.Tokens dan geliyor.
 => bu metodda kullandığımız securityKey, SecurityKeyHelper ile oluşturduğumuz securityKey.
 
-***** SetClaims metodunda claims. ile gelecek metodları extend etmek için *****
+*****SetClaims metodunda claims. ile gelecek metodları extend etmek için*****
 Core katmanında yeni bir klasör oluşturuyoruz Extensions adında.
 bunun içerisinde ClaimExtension adında bir class oluşturduk. static olarak.
 bu class içerisinde extend edeceğimzi metodları yazacağız.
@@ -1251,6 +1242,57 @@ public static class ClaimExtensions
             => AddRoles ismi ClaimTypes içerisinde var.
         }
     }
+
+Core katmanında Extensions klasörü altında bir class daha oluşturdu hoca derste bunun anlamıne bilmiyorum.
+Ama burada dursun.
+=> aşaıdaki kodların ne yaptığını anlamaya çalışalım.
+
+public static class ClaimsPrincipalExtensions
+    {
+        public static List<string> Claims(this ClaimsPrincipal claimsPrincipal, string claimType)
+        {
+            var result = claimsPrincipal?.FindAll(claimType)?.Select(x => x.Value).ToList();
+            return result;
+        }
+
+        public static List<string> ClaimRoles(this ClaimsPrincipal claimsPrincipal)
+        {
+            return claimsPrincipal?.Claims(ClaimTypes.Role);
+        }
+    }
+
+Business katmanında BusinessAspects içerisinde Autofac klasörü altında Secured options tanımlamışız.
+
+=> yukarıdaki kod alttaki kod ile ilişkili.
+=> bunuda JWT için tanımlamışız.
+
+public class SecuredOperation : MethodInterception
+    {
+        JWT için
+        private string[] _roles;
+        private IHttpContextAccessor _httpContextAccessor;
+
+        public SecuredOperation(string roles)
+        {
+            _roles = roles.Split(',');
+            _httpContextAccessor = ServiceTool.ServiceProvider.GetService<IHttpContextAccessor>();
+
+        }
+
+        protected override void OnBefore(IInvocation invocation)
+        {
+            var roleClaims = _httpContextAccessor.HttpContext.User.ClaimRoles();
+            foreach (var role in _roles)
+            {
+                if (roleClaims.Contains(role))
+                {
+                    return;
+                }
+            }
+            throw new Exception(Messages.AuthorizationDenied);
+        }
+    }
+
 *** şimdi yukarıdaki extensions ları yaptıktan sonra jwthelper içerisindeki SetClaims leri yapabiliriz.
 
 Yukarıdaki jwthelper clasını ve burada kullandığımız extensionları, securitykey helperları, setclaims metodlarını tamamladıktan sonra
@@ -1266,7 +1308,7 @@ public interface IAuthService
         IDataResult<User> Register(UserForRegisterDto userForRegisterDto, string password);
         => IDataResult ile kullanıcı bilgilerini dönebiliriz.
         => parametre olarak userForRegisterDto'daki bilgileri ve bir tanede password alacağiz.
-        => aslında userForRegisterDto içerisinde Password alanı var ama emin değiliz, ******** deniyorum.
+        => aslında userForRegisterDto içerisinde Password alanı var ama emin değiliz,
         IDataResult<User> Login(UserForLoginDto userForLoginDto);
         => userForLoginDto içerisindeki alanları istiyoruz.
         IResult UserExists(string email);
@@ -1396,7 +1438,6 @@ public class HashingHelper
         }
 
         public static bool VerifyPasswordHash(string password, byte[] passwordHash, byte[] passwordSalt)
-        => verify parametrelerinde out keywordi yok dikkat edelim.
         => kullanıcının login sırasında verdiği password'un hashleyerek, veritabanında ki hashlenmiş password ile karşılaştırılması.
         {
             using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt))
@@ -1529,11 +1570,11 @@ Public JwtHelper(IConfiguration congiguratin)
 
 *** WebApi katmanında appsettings içerisinde json fortmatında configurasyonumuzu veriyoruz.
 "TokenOptions": {
-    "Auidence": "ulas@ulas.com", //=> bu iki alan çok önemli değil ama olmalı
-    "Issuer": "ulas@ulas.com", //=> bu iki alan çok önemli değil ama olmalı
-    "AccessTokenExpiration": 10, //=> önemli alan, token'ın kaç dakika geçerli olacağı,
-    "SecurityKey": "mysupersecretkeymysupersecretkey" //=> önemli alan, tokenı oluşturuken kullanılacak anahtar adı.
-    //=> bu alanın uzun olması önemi. buradaki jwt aspnet tarafından kullanılacak.
+    "Auidence": "ulas@ulas.com", => bu iki alan çok önemli değil ama olmalı
+    "Issuer": "ulas@ulas.com", => bu iki alan çok önemli değil ama olmalı
+    "AccessTokenExpiration": 10, => önemli alan, token'ın kaç dakika geçerli olacağı,
+    "SecurityKey": "mysupersecretkeymysupersecretkey" => önemli alan, tokenı oluşturuken kullanılacak anahtar adı.
+    => bu alanın uzun olması önemi. buradaki jwt aspnet tarafından kullanılacak.
 },
 
 Yukarıdaki bütün alanları doğru yazdığımıza dikkat edelim.
@@ -1548,7 +1589,7 @@ bunu ConfigureServices içerisinde
 services.AddCors(options=>
     {
         options.AddPolicy("AllowOrigin",=>policy adı
-            builder=>builder.WithOrigins("http://localhost:3000"));
+            builder=>builder.WithOrigins("http:localhost:3000"));
             => bu bize localhost:3000 den talep gelirse buna izin ver demek.
             => burada daha fazla localhost yada domain belirtebiliriz.
         
@@ -1560,7 +1601,7 @@ bu middlewarelerin sırası önemli!
 public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
 =>buranın içerisine ekleyeceğiz.
 {
-    app.UseCors(builder=>builder.WithOrigins("http://localhost:3000").AllowAnyHeader());
+    app.UseCors(builder=>builder.WithOrigins("http:localhost:3000").AllowAnyHeader());
     => allowanyheader header get,put,fetch,delete,patch gibi bütün http istekleri. (postmande var bunlar.)
 }
 
@@ -1622,7 +1663,7 @@ olabiliriz. bize token ve expiration döndü. ***
 
 *** fakat sisteme register ettiğimiz kullanıcının bilgilerini kullnarak sisteme login olmak istersek bu durumda
 şifre hatalı diye bir hata aldık, bu hatanın nedeni ise Core katmanında Security klasörünün altında
-HashingHelper içerisinde VerifyPasswordHash ile metodunun içerisinde
+HashingHelper içerisinde VerifyPasswordHash ile metdonun içerisinde
 
 using (var hmac = new System.Security.Cryptography.HMACSHA512()) => HMACSHA512 içerisinde passwordsalt'ı vermemişiz.
 using (var hmac = new System.Security.Cryptography.HMACSHA512(passwordSalt)) => bu şekilde olmalı.
@@ -1677,3 +1718,631 @@ OperationClaims tablosunda yetkileri tanımladıracağız.
 UserOperationClaims tablosunda kullanıcıların verilerini alacağız.
 
 *** gerekli roller tanımladıktan ve kullanıcılara atandıktan sonra, sistem çalışacaktır.
+
+***** 15 inci ders JWT devam *****
+14 ündü derste aldığımız hataları giderebilmek adına.
+
+WebApi katmanında Startup.cs içerisinde
+
+services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+=> tokenoptions'ın üzerine ekledik.
+
+daha sonra, token options'ın altına 
+ServiceTool.Create(services);
+=> ekledik. bu iki kodu ekleyince çalıştı.
+
+14 üncü tekrar da yeniden yazalım tüm sistemi, onun üzerinden notlar çıkaralım, hangisini silip hangisini ekleyince
+neler oluyor.
+
+Cache, Transaction, Performans aspectlerini ekleyeceğiz.
+
+
+daha önceden dependency resulation olayını webapide program.cs içinde Autofac'e aktarmıştık.
+
+  public static IHostBuilder CreateHostBuilder(string[] args) =>
+            Host.CreateDefaultBuilder(args)
+                .UseServiceProviderFactory(new AutofacServiceProviderFactory())
+                .ConfigureContainer<ContainerBuilder>(builder =>
+                {
+                    builder.RegisterModule(new AutofacBusinessModule());
+                })
+                .ConfigureWebHostDefaults(webBuilder =>
+                {
+                    webBuilder.UseStartup<Startup>();
+                });
+
+=> yukarıdaki kod ile dependency resulation olayını AutofacServiceProviderFactory() ile autofac e aktardık.
+=> bu nedenle autofac devrede bu yüzden webapi katmanıdna startup içerisindeki dependency ler ile ilgili 
+=> configürasyonlar devreye giremiyor.
+=> bunu hızlı bir şekilde aşmak için WebApi katmanında ServiceTool.Create(services);
+=> ile servislerden autofac'in haberdar olmasını sağlamıştık.
+=> bu web servis e ilişkin injectionları başka apilerde de kullanabileceğimizden bunu Core Katmanına taşımalıyız.
+
+services.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+=> bu kod senden IHttpContextAccessor istenirse HttpContextAccessor ver demek.
+
+şimdi öncelikle Business katmanında DependencyResolver içerisinde, Autofac klasöründe
+AutofacBusinessModule.cs var. burada
+builder.RegisterType<HttpContextAccessor>().As<IHttpContextAccessor>();
+=> bu kodu eklemiştik. bunu kaldırıyoruz buradan.
+( 14 üncü derste hata çıkınca çözüm olarak bunu ekledik.)
+=> bu classta projemiz ile iglili injectionlar var. fakat biz yukarıdaki injection'ı her projede kullanabiliriz.
+=> sadece northwind de değil.
+
+
+Core'a taşıyacağımız dependencyler için,
+Core katmanında Utilities içerisinde IoC klasörüne ICoreModüle diye bir interface ekliyoruz.
+
+ public interface ICoreModule
+    {
+        void Load(IServiceCollection serviceCollection);
+        => IserviceCollection türünde serviceColletion yükleyecek.
+    }
+=> IServiceColletion Microsoft.Extensions.DependencyInjection'dan geliyor. dikkat.
+
+Business katmanında DependencyResolvers northwind projesine ait dependencyler resolve ediyor.
+Fakat biz projelerden bağımsız (her projede kullanılabilecek) dependencyleri resolve edeceğimiz
+bir yer istiyoruz.
+
+Bunun için Core katmanında DependencyResolvers klasörünü oluşturuyoruz.
+Bu klasörde CoreModule diye bir class oluşturuyoruz.
+Bu class Core katmanında Utilities içerisindeki IoC klasöründeki ICoreModule den inherite oluyor.
+
+ public class CoreModule :ICoreModule
+    {
+        public void Load(IServiceCollection serviceCollection)
+        {
+            serviceCollection.AddSingleton<IHttpContextAccessor, HttpContextAccessor>();
+            => bu kodu burada belirttiğimizden dolayı artık webapi katmanında startup içerisinden silebiliriz.
+            => IHttpContextAccessor Microsoft.AspNetCore.Http'den geliyor.
+        }
+    }
+
+=> burası uyglama seviyesinde servis bağımlılıklarımızı çözeceğimiz yer.
+=> bu classı webapi içerisine taşımak için.
+WebApi katmanında startup içerisindeki, 
+ServiceTool.Create(services); kodunuda siliyoruz.(bu geçici bir çözümdü artık kalıcı hale getiriyoruz.)
+yukarıdaki yerine,
+services.AddDependencyResolvers(); diyoruz.
+**** buradaki mantık şu
+=> biz Core katmanında CoreModule 'ü oluşturduk. ilerde başka modüllerde eklemek istersek diye, yukarıdaki kodu yazdık.
+=> AddDependencyResolvers() içerisine istediğimiz kadar sadece CoreModülü değil başka modülleride ekleyebilelim.
+
+ancak AddDepencyResolvers'ı tanımadı. 
+=> AddDepencyResolvers() webapide public void ConfigureServices(IServiceCollection services) altında.
+=> burada IServiceCollection interfaceini kullandık. biz bu interfacei extension ile AddDepencyResolvers eklersek.
+
+**** Core katmanında Extensions klasörü içerisinde AddDepencyResolvers extensionı yazalım.
+Bunu ServiceCollecitonExtension'ı olarak yazacağımızdan dolayı.
+Core katmanında Extensions klasöründe ServiceCollecitonExtension classını oluştur.
+
+**** bir extension yazabilmek için o classın static olması gerekir *****
+(static classların metodlarıda static olmak zorunda)
+(javada böyle bir zorunluluk yok)
+
+public static class ServiceColletionExtensions
+    {
+        public static IServiceCollection AddDependencyResolvers
+            (this IServiceCollection serviceCollection, ICoreModule[] modules)
+        {
+            foreach (var module in modules)
+            {
+                module.Load(serviceCollection);
+                => Load() metodu ICoreModule Core/Utilities/IoC içerisinde tanımladığımız interface den geliyor.
+                => Load() metodu parametre olarak serviceColletion alıyor.
+            }
+
+            return ServiceTool.Create(serviceCollection);
+            => bu yükelediğimiz modülleri serviceCollection olarak create ediyoruz.
+        }
+    }
+
+=> şimdi startupta ki services.AddDependencyResolvers() kullanabiliriz.
+
+services.AddDependencyResolvers(new ICoreModule[]
+=> AddDependencyResolvers parametere olarak ICoreModule arrayi alıyor.
+            {
+                new CoreModule()
+                => array içerisinde CoreModule()'ü newleyerek verdik.
+                => ileride burada başka moduleleride (ICoreModule den implemete olması koşuluyla) ekleyebiliriz.
+            });
+
+
+şuan yukarıdakilerde tamamladıktan sonra çalışan versiyonu daha iyi bir hale getirdik.
+=> AddDependencyResolvers'ı params[] vererekte oluşturabiliriz, biz array döndük array olarak yaptık.
+=> istersek collection olarak ta yapabiliriz.
+=> şu hali ile sistem çalışıyor.
+
+Şimdi ProductManagerda Add metodunun önüne 
+[SecuredOperation("product.add,admin")] ile bir aspect eklemiştik.
+
+SecuredOperation'ı Bussines katmanında BusinessAspects klasörü içerisinde Autofac klasöründe
+oluşturduk. içerisinde
+
+public class SecuredOperation : MethodInterception
+=> bir methodinterception 
+    {
+        => JWT için
+        private string[] _roles;
+        private IHttpContextAccessor _httpContextAccessor;
+
+        public SecuredOperation(string roles)
+        {
+            _roles = roles.Split(',');
+            _httpContextAccessor = ServiceTool.ServiceProvider.GetService<IHttpContextAccessor>();
+
+        }
+
+        protected override void OnBefore(IInvocation invocation)
+        {
+            var roleClaims = _httpContextAccessor.HttpContext.User.ClaimRoles();
+            foreach (var role in _roles)
+            {
+                if (roleClaims.Contains(role))
+                {
+                    return;
+                }
+            }
+            throw new Exception(Messages.AuthorizationDenied);
+        }
+    }
+
+bu aspects ile login olan kullanıcımızın product add yetkisi varmı?
+yetkileri veri tabanında OperationClaims ve UserOperationClaims tablosu ile yaptık.
+=> önce claimleri tanımlıyoruz
+=> daha sonra user ıd mize tanımladığımız operationclaim'i veriyoruz.
+
+*** claimler için neden bir dal, ef, service ve manager yazmadık?
+=> car rental projemizde admin yetkisi ile bunlara ekleme yapabilecek servisleri yazalım bence.(yazıldı)
+
+***** attribute ve aspects lerin anlatıldığı dersi yeniden incele *****
+
+*** bu kodları evde yap ödevi daha sonra html çalış, jetbrains den webstorm idesini indirebiliriz. ***
+
+***** Cache İşlemleri *****
+
+Cache nedir?
+=> örneğin product manager da ürünleri listeliyoruz.
+=> product manager içerisinde ki GetAll metodununun başına
+[CacheAspect] diyoruz.
+=> bu metodu bir kişi çağırdıysa bu veriyi cache de tutsun, başka kullanıcı bu metodu çağırdıysa ve
+=> data değişmediyse veritabanına gitmesin Cache den gelsin veriler.
+=> Bu sayede performans artacak.
+
+Cache yönetimi farklı şekillerde yapılabiliyor. ama biz burada microsoft'un built in cache yapısını kullanacağız.
+Bu builtin cache yönetemi inmemory (veri bellekte tutuluyor.)
+* redis cache gibi metodlar da söz konusu buna bakalım. (daha gelişmiş)
+Veri bellekte tutuluyor. cachde o data varsa veri tabanına gitmeksizin veri tabanından getiriyoruz.
+
+Cache için istediğimiz kadar süre verebiliriz. 
+ancak bir ürün eklendiğinde yada güncellediğinde cachedeki datanın silinmesini istiyeceğiz.
+
+Cachlemek istediğimi datayı key, value pair denilen bir pair ile tutuyoruz.
+key=> cache e verdiğimiz isim aslında.
+
+=> örneğin CrossCuttingConcerns içerisindeki ValidationTool kodu aspect ile alakalı değil,
+=> aspect bunu çağırsın istiyoruz.
+
+bu nedenle Cache'aspectininde çağıracağı kodlar için 
+=> Core katmanında CrossCuttingConcerns içerisinde Caching diye bir klasör oluşturuyoruz.
+=> Bu klasör içerisinde bütün cache alternatifleri için bir interface yazacağız.
+şu an için inmemory kullanıyoruz ileride redis kullanırsak yada elasticsearch logstash kullanmak istersek
+bunlar için bir interface olacak. bu interfaceleri onlara implemente edebiliriz.
+(herhangi bir teknoloji bağımsız interface.)
+
+public interface ICacheManager
+    {
+        T Get<T>(string key);
+        => generic metod. (bunların farklı örneklerine bakalım.)
+        => cacheden bir data getirmek. bu gelecek data liste de olabilir, tek bir elemanda döndürebilir.
+        => bu nedenle farklı veri tipleri söz konusu,
+        => burada bir T döndüreceğiz, bu T her şey olabilir,
+        => bu T'nin ne olacağını hangi tip olacağını Get içerisinde vereceğiz.
+        => ben sana bir key vereceyim, sende bu key karşılığındaki datayı getir demiş olduk.
+        object Get(string key); böylede yazılabilir.(generic olmayan)
+        void Add(string key, object value,int duration);
+        => object her şeyin base dönebilecek şeyler için,(list,tek eleman, vb.)
+        => int duration cache de ne kadar kalacak.(inmemory kullanıyoruz bellekte ne kadar kalacak.)
+        => key cache için vereceğimiz isim.
+        bool IsAdd(string key);
+        => biz cache eklerken (bir veri cache de varsa onu cacheden getiririz)
+        => fakat cachede yoksa veri tabanından veriyi getirken de onu cache ekleriz.
+        => yukarıda cachede var mı diye soruyoruz.
+        void Remove(string key);
+        => cacheden uçurma.
+        void RemoveByPattern(string pattern);
+        => içerisinde category olan cachleri uçur,
+        => get ile başlayan cacheleri uçur gibi.
+        => vereceğiniz pattern bir regex pattern'i.
+
+    }
+
+=> bu interface'i tanımladıktan sonra bunun somut bir classını oluşturmamız gerekiyor.
+=> Microsoft'un cache yapısını kullanacağımız için
+=> Core katmanında CrossCuttingConcerns içerisinde Caching klasörü içerisinde Micorosft isminde bir klasör oluşturduk.
+buraya MemoryCacheManager isminde bir class oluşturduk.
+(memcache diye bir memorycache yapısıda var, ona bakabiliriz ancak 3rd party bir ürün.)
+
+ public class MemoryCacheManager : ICacheManager
+    {
+        IMemoryCache _memoryCache;
+        => IMemoryCache Microsoft.Extensions.Caching.Memory den geliyor.
+        => IMemoryCache bir interface ctor dan enjekte edersek çalışmayacaktır.
+        => çalışmama nedeni bağımlılık zinciri içerisinde değil.
+        => zincir=> webapi => business => data access
+        => aspects başka bir zincirin içerisinde, bağımlılık içerisinde değil.
+        => bu durum için bir tane service tool yazdık.
+        => core da DependencyResolvers altında CoreModule.
+
+
+         public MemoryCacheManager() => ctor
+        {
+            _memoryCache = ServiceTool.ServiceProvider.GetService<IMemoryCache>();
+            => CoreModule içerisinde serviceCollection.AddMemoryCache(); bu kodu yazınca 
+            => memorycache instace ı otomatik olarak oluşuyor.
+            => yukarıdaki kod ServiceTool içerisindeki ServiceProvider.GetService ile otomatik olarak
+            => oluşan instace ı almamızı sağlıyor.
+            => GetService Microsoft.Extensions.DependencyInjection 'dan geliyor.
+        }
+
+        public T Get<T>(string key)
+        {
+            return _memoryCache.Get<T>(key);
+        }
+
+        public object Get(string key)
+        {
+            return _memoryCache.Get(key);
+        }
+
+        public void Add(string key, object value, int duration)
+        {
+            _memoryCache.Set(key, value, TimeSpan.FromMinutes(duration));
+        }
+
+        public bool IsAdd(string key)
+        {
+            return _memoryCache.TryGetValue(key, out _); 
+            => TryGetValue aynı zamanda datayı da getiriyor. (key ve out object value istiyor.)
+            => ama ben key varmı yokmu onu bulmak istiyorum value'ya ihtiyacım yok.
+            => datayı istemiyorum, out _ cache deki datayı verme demek.
+            => bu nedenle ikinci parametreiyi out _ ifadesi ile veriyorum.
+        }
+
+        public void Remove(string key)
+        {
+            _memoryCache.Remove(key);
+        }
+
+        public void RemoveByPattern(string pattern)
+        {
+            => hocanın github'ından aldık.
+            var cacheEntriesCollectionDefinition = typeof(MemoryCache).GetProperty("EntriesCollection", System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Instance);
+            => git belleğe bak EntriesCollection'ı (microsuft buraya attığını söylüyor) bul.
+            var cacheEntriesCollection = cacheEntriesCollectionDefinition.GetValue(_memoryCache) as dynamic;
+            => EntriesCollection içerisinde definition'ı memorycache olanları bul.
+            List<ICacheEntry> cacheCollectionValues = new List<ICacheEntry>();
+            => ICacheEntry türünde cacheCollectionValues yeni liste, aşağıda içerisinde değer ekleyeceğiz.
+
+            foreach (var cacheItem in cacheEntriesCollection)
+            {
+            => bütün listdeki her bir cache elemanını gez.
+                ICacheEntry cacheItemValue = cacheItem.GetType().GetProperty("Value").GetValue(cacheItem, null);
+                cacheCollectionValues.Add(cacheItemValue);
+            }
+
+            => her bir cache elemanında alttaki kurallar uyanlar.
+            var regex = new Regex(pattern, RegexOptions.Singleline | RegexOptions.Compiled | RegexOptions.IgnoreCase);
+            => burada pattern oluşturuyoruz.
+            var keysToRemove = cacheCollectionValues.Where(d => regex.IsMatch(d.Key.ToString())).Select(d => d.Key).ToList();
+            => cache datası içerisindeki keylerden benim gönderdiğim değere uygun olanları keysToRemove içerisine at.
+
+            foreach (var key in keysToRemove)
+            {
+                => keysToRemove içerisindeki bütün keyleri bellekten siliyoruz.(uçuruyoruz.)
+                _memoryCache.Remove(key);
+            }
+        }
+    }
+
+**** coremodule içerisine şunları ekledik *****
+serviceCollection.AddMemoryCache();
+=> bu kod ile memorycache injection'ı otomatik olarak oluyor.
+=> arka planda bir memorycache instance'ı oluşuyor.
+=> yukarıdaki ctor ile o instance'ı alacağız.
+=> artık MemoryCacheManagerda IMemoryCache _memoryCache karşılığı var.
+=> _memoryCache karşılığı var.
+serviceCollection.AddSingleton<ICacheManager, MemoryCacheManager>();
+=> birisi senden ICacheManager isterse ona MemoryCacheManager ver.
+=> ileride redis e geçersek yapacağımız tek haraket redis klasörünü oluşturup.
+=> serviceCollection.AddSingleton<ICacheManager, RedisCacheManager>(); dememiz yeterli.
+
+**** bu eklemeleri yaptıktan sonra 
+IMemoryCache _memoryCache; injection problemini çözdüğümüze göre (bir ekleme daha yapacağız henüz bitmedi.)
+=> constructor içerisinde oluşan instasce'ı alacağız.
+CacheManager içerisindeki cachleri doldurabiliriz.
+
+***** Adaptive pattern => mesele sadece microsoftun memory cache'ini eklemek değil sistemize adapte etmek.
+sadece microsoft memory cache'i eklersem (eklemekle kalırsam sistemime adapte etmezsem) yarın bir gün
+=> hardcode eklemekten bahsediyoruz.
+başka bir cache sistemine geçersem patlarım.
+(yada bazı managerları cache de diğerlerini redis te tutalım diyebiliyor muyuz bunu araştıralım.)
+memorycache'i sistemine adapte edersem ileride sıkıntı yaşamam.
+
+**** sektörde şu şekilde kullanımda var *****
+yukarıdakileri tanımladıktan sonra
+Product Manager içerisinde
+
+ICacheManager _cacheManager;
+
+_cacheManager = cacheManager diyerek injection'ı yapıyor.
+
+=> bunun karşılığı var zaten CoreModule içinde
+(MemoryCache)
+
+daha sonra metodların içerisinde ifler ve else ler ile cache'i kontrol ediyor.
+key değeri varmı varsa cacheden getir, cachede yoksa, veri tabanından getir cache'e ekle,
+güncelleneme ile ilgili metod ise cachedekileri uçur yeniden veritabanından getir cache'e ekle
+cacheden getir, gibi.
+=> yukarıdaki işlerde her bir metod için tek tek yazılması gerekiyor.
+=> sürekli aynı şeyleri yazmak yerine aspect yapısı ile cache için yapılacakları tanımlayalım.
+=> metodlarımızın üstünde [] aspect olarak yazalım ve böylece, metodlarımız çalışmadan önce aspectekileri 
+çalıştırsın.
+
+Şimdi bunun için aspect yazacağız.
+
+Core katmanında, Aspects klasöründe Autofac içerisine Caching klasörü oluşturduk.
+Onun içerisine CacheAspect diye bir class oluşturduk.
+
+public class CacheAspect : MethodInterception
+    => aşağıdaki intercept metodu MethodIntercetion içerisinde geliyor.
+    => onbefore da kullanılabilirdi burada ama biz intercept'i kullandık (her ikiside olur)
+    {
+        private int _duration;
+        private ICacheManager _cacheManager;
+
+        public CacheAspect(int duration = 60) => duration'ın default değer 60
+        => duration'a değer vermezsek cachelenen veri bellekte 60 dakika kalacak ve daha sonra uçacak cacheden.
+        {
+            _duration = duration;
+            _cacheManager = ServiceTool.ServiceProvider.GetService<ICacheManager>();
+            => ICacheManager'ın kendiside bir aspect olduğundan dolayı injection'ı bu şekilde yapmamız lazım.
+            => service tool kullanarak hangi cache manager'ı kullandığımız belirtiyoruz.
+            => ileride redis e geçersek burada bir değişiklik yapmıyoruz.
+            => onun yerine redis klasörünü yapıp, CoreModule gidio redis kullanacağımız belirtiyoruz.
+            => bu sayede burada bir değişiklik yapma ihtiyacı hissetmiyoruz.
+        }
+
+        => getall 'u çalıştırmadan bu kodları çalıştırıyoruz.
+        => hangi metodun önünde kullanırsak.
+        public override void Intercept(IInvocation invocation)
+        {
+            => bir tane key oluşturacağız. alltakiler bunun için.
+            var methodName = string.Format($"{invocation.Method.ReflectedType.FullName}.{invocation.Method.Name}");
+            => key için metodumuzun ismini bulmaya çalışıyoruz.
+            => reflectedtype dediğimiz zaman metodumuzun namespace'ini alacak (örneğin Bussines.Concrete.IProductService)
+            => biz hep interface üzerinden çalıştığımız için IProduct Service'i aldı.
+            => invocation.Method.ReflectedType.FullName => namespace+class'ın adı.(interface)
+            => invocation.Method.Name => bize metodun adını verir (GetAll, GetById gibi.)
+            var arguments = invocation.Arguments.ToList();
+            => invocation metod demek.
+            => metodun parametresi varsa listeye çevir.
+            var key = $"{methodName}({string.Join(",", arguments.Select(x => x?.ToString() ?? "<Null>"))})";
+            => burası bir join operasyonu, aralarına ',' koyarak (parametrelerin her biri için), 
+            => buradaki ? işareti parametre varsa string'e çevir, ?? yoksa null ver demek.
+            => metodun parametrelerini GetAll() içerisine ekle demek, metodun parametresi yok ise null.
+            * keyimizi oluşturduk.
+            if (_cacheManager.IsAdd(key))
+            {
+                => oluşturduğumuz key için bellekte böyle bir cache anahtarı varmı bak.
+                invocation.ReturnValue = _cacheManager.Get(key);
+                => invocation.ReturnValue demek cachede varsa metodu hiç çalıştırmadan return et.
+                return;
+            }
+            invocation.Proceed();
+            => ama cachede yoksa metodu devam ettir(GetAll)
+            => metod çalışınca veritabanından veriyi geri getirdi.
+            _cacheManager.Add(key, invocation.ReturnValue, _duration);
+            => metodun getirdiği veriyi key , retun değeri ve cahcde tutulacağı süreyi vererek cache'e ekle.
+        }
+    }
+
+*** aspectleri ve reflection ları yeniden başka bir kaynaktan çalışalım daha sonra attributelara bakalım.
+*** hermetod cache'e konmaz. sürekli çalışan ve yüksek miktarda veri dönmeyen metodları cache'e koyarız.
+*** milyon dolarlık soru, cache içerisindeki veriye filtre atıp getirebilirmiyim?
+
+cache eklemeyi yaptık şimdi CacheRemove için bir aspect yazmamız lazım.
+
+Core Katmanında Aspects içerisinde Aoutfac klasöründe, caching klasörü içerisine CacheRemoveAspect diye bir class oluşturduk.
+
+public class CacheRemoveAspect : MethodInterception
+    => datamız değiştiğinde bunu uygularız.
+    => veri eklenmiş, silinmiş, güncellenmiş olabilir.
+    => burada eski cache'i uçaracağız.
+    => Update, Delete gibi metodların öncesinde kullanacağız.
+    {
+        private string _pattern;
+        private ICacheManager _cacheManager;
+
+        public CacheRemoveAspect(string pattern)
+        {
+            _pattern = pattern;
+            _cacheManager = ServiceTool.ServiceProvider.GetService<ICacheManager>();
+        }
+
+        protected override void OnSuccess(IInvocation invocation)
+        {
+        => pattern'e göre cache silme işlemi yapıyor.
+            _cacheManager.RemoveByPattern(_pattern);
+        }
+    }
+
+CacheRemoveAspect'in kullanımı
+ProductManager içerisinde Update metodunun üstüne
+[CacheRemoveAspect("IProductService.Get")] ekliyoruz.
+=> IProductService.Get demek key'i içerisinde IProductService.Get olan cachleri kaldır
+(GetAll, GetById gibi cacheleri.)
+Bu aspect'i add metoduna da ekliyoruz.
+
+*** Transaction Kötü Kod ***
+=> Transaction: diyelimki a hesabından b hesabına para gönderiyoruz. Para a hesabının bakiyesinden düştü,
+ancak b hesabının bakiyesinde bir artış olmadı, bu durumda paranın a hesabına geri dönmesi gerekiyor.
+
+IProductService içerisine
+IResult AddTransactionalTest(Product product); 
+=> bunu ekledik.
+
+ProducManager içerisine implemente ettik.
+
+public IResult AddTransactionalTest(Product product)
+        {
+            using (TransactionScope scope = new TransactionScope())
+            {
+                try
+                {
+                    Add(product);
+                    if (product.UnitPrice < 10)
+                    {
+                        throw new Exception("");
+                    }
+                    Add(product);
+                    scope.Complete();
+                    => try içindeki kod başarılı olursa tamamla demek.
+                }
+                catch (Exception e)
+                {
+                    scope.Dispose();
+                    => eğer try içindeki kod başarısız olursa işlemi geri al demek.
+                }
+            }
+
+            return null;
+        }
+
+ancak bu kötü kod bunu aspect içerisine taşıyalım.
+Aspect ile try ve using disposible pattern'i bizim için yapsa.
+[TransactionScopeAspect] desem isminede.
+
+Core katmanında Aspects içerisinde, Autofac içerisinde Transaction diye bir klasör açtık.
+İçerisinde TransactionScopeAspect diye bir class oluşturduk.
+
+public class TransactionScopeAspect : MethodInterception
+    {
+        public override void Intercept(IInvocation invocation)
+        {
+            using (TransactionScope transactionScope = new TransactionScope())
+            {
+            => yukarıda verdiğimiz using disposible pattern burada
+                try
+                {
+                => try catch blogu burada. metod yerine invocation kullanıyoruz sadece.
+                    invocation.Proceed();
+                    => metodu çalıştır. (invocation aspectlerde metod demek)
+                    transactionScope.Complete();
+                    => başarılıysa compelete et.
+                }
+                catch (System.Exception e)
+                {
+                    transactionScope.Dispose();
+                    => başarısız ise dispose et.
+                    throw;
+                }
+            }
+        }
+    }
+
+=> aspect ile ProductManagerde yer alan kodumuz artık şu hali aldı.
+
+public IResult AddTransactionalTest(Product product)
+        {
+            Add(product);
+            => ürünü veri tabanına ekler (belleğine)
+            => çünkü save changes çalışıyor. (entityframework teki save changes)
+            if (product.UnitPrice<10)
+            {
+                throw new Exception("");
+                => koşul sağlandıysa hata msj atar.
+            }
+
+            Add(product);
+            => eklediği ürünü veritabanı belleğinden geri alır.
+            => acaba burada index numarası artar mı?
+
+            return null;
+        }
+
+*** unit of work burada doğru bir implementasyon değil.
+=> çünkü entitiyframeworkteki save changes unit of work'ün zaten kendisi.
+
+buradaki olay aslında nested transaction denilen mantığından kaynaklı.
+üst transaction alttaki transactionları zaten kapsar (nested yapısı.)
+
+**** Performance *****
+sistem yavaşladığında programcılar suçu sistemcilere, sistemciler veri tabancılarına atıyor :)
+sistemde yogun sorgulamarda bir sistem zaafiyeti varsa sistem bizi uyarsın.
+sistem yavaşlılığının nedeni programcıdan kaynaklı ise bunu tespit etmek zor.
+bu yapıda bir aspect.
+
+Core katmanında Aspects içerisinde, Autofac içerisinde, Performans klasörü oluşturduk.
+bu klasör içerisinde PerformanceAspect adında bir class oluşturduk.
+
+public class PerformanceAspect : MethodInterception
+    {
+        private int _interval;
+        private Stopwatch _stopwatch;
+        => stopwatch timer, bu metod ne kadar sürecek.
+
+        public PerformanceAspect(int interval)
+        {
+            _interval = interval;
+            _stopwatch = ServiceTool.ServiceProvider.GetService<Stopwatch>();
+            => DependencyResolvers içerisindeki CoreModule'e de ekledik Stopwatch'ı.
+            => CoreModule da serviceCollection.AddSingleton<Stopwatch>(); şeklinde ekledik.
+        }
+
+
+        protected override void OnBefore(IInvocation invocation)
+        {
+            => metodun önünde kronometreyi başlatıyoruz.
+            _stopwatch.Start();
+        }
+
+        protected override void OnAfter(IInvocation invocation)
+        {
+            => metod bittiğinde ise o zamana kadar geçen süreyi hesaplıyorum.
+            if (_stopwatch.Elapsed.TotalSeconds > _interval)
+                => geçen süre sana interval olarak verdiğim saniyeden fazla ise,
+            {
+                Debug.WriteLine($"Performance : {invocation.Method.DeclaringType.FullName}.{invocation.Method.Name}-->{_stopwatch.Elapsed.TotalSeconds}");
+                => console'a log olarak yazmışız.
+            }
+            _stopwatch.Reset();
+        }
+    }
+
+=> kullanımı ProductManager içerisinde öncesinde çalıştırmak istediğimiz metodların başına yazabiliriz.
+[PerformanceAspect(5)]
+=> buradaki 5 metodun çalışması ile tamamlanması arasında ki süre 5 saniyeyi geçerse bildir demek.
+=> bu aspect bu şekilde eklendiği metodlarda çalışır, biz eğerki hiç ayrım yapılmaksızın bütün metodlarda çalışmasını istiyorsak
+
+Core katmanında, Utilities içerisinde, Interceptors klasörü altında AspectInterceptorSelector classına ekleme yapacağız.
+
+ public class AspectInterceptorSelector : IInterceptorSelector
+    {
+        public IInterceptor[] SelectInterceptors(Type type, MethodInfo method, IInterceptor[] interceptors)
+        {
+            var classAttributes = type.GetCustomAttributes<MethodInterceptionBaseAttribute>
+                (true).ToList();
+            var methodAttributes = type.GetMethod(method.Name)
+                .GetCustomAttributes<MethodInterceptionBaseAttribute>(true);
+            classAttributes.AddRange(methodAttributes);
+       *****=> buraya ekleyeceğimiz aspect istisnasız projede yer alan bütün metodlar için çalışacaktır.
+            classAttributes.Add(new PerformanceAspect(5));
+       *****=> projedeki bütün metodlar için performans aspecti 5 saniye ile çalıştıracaktır.
+
+
+            return classAttributes.OrderBy(x => x.Priority).ToArray();
+        }
+    }
+
+bundan sonrası artık angular, frontend e başladık.
